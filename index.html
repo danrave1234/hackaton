@@ -4,9 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Simple Blank Project</title>
-  <!-- Tailwind CSS via CDN with a prefix to avoid class name conflicts -->
+  <!-- Tailwind CSS via CDN with a tw- prefix configured safely before load -->
   <script>
-    tailwind.config = { prefix: 'tw-' };
+    window.tailwind = {
+      config: { prefix: 'tw-' }
+    };
   </script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="style/styles.css" />
