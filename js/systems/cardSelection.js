@@ -224,12 +224,61 @@ export class CardSelectionScreen {
       }
     }
     
-    // Hide screen after brief delay
+    // Hide card selection screen
     setTimeout(() => {
       this.hide();
-      if (this.onCardSelected) {
-        this.onCardSelected(option);
-      }
+      
+      // Create a countdown overlay
+      const countdownOverlay = document.createElement('div');
+      countdownOverlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+        font-family: monospace;
+        color: white;
+      `;
+      
+      countdownOverlay.innerHTML = `
+        <div style="text-align: center; padding: 40px; border-radius: 20px;">
+          <h2 style="font-size: 36px; margin: 0 0 20px 0; color: #4CAF50;">
+            Get Ready!
+          </h2>
+          <div style="font-size: 72px; color: #FFC107;" id="countdown">3</div>
+          <p style="margin: 20px 0 0 0; color: #ccc;">
+            Next level starting...
+          </p>
+        </div>
+      `;
+      
+      document.body.appendChild(countdownOverlay);
+      
+      // Start countdown
+      let countdown = 3;
+      const countdownElement = document.getElementById('countdown');
+      
+      const interval = setInterval(() => {
+        countdown--;
+        if (countdownElement) {
+          countdownElement.textContent = countdown;
+        }
+        
+        if (countdown <= 0) {
+          clearInterval(interval);
+          countdownOverlay.remove();
+          if (this.onCardSelected) {
+            this.onCardSelected(option);
+          }
+        }
+      }, 1000);
+      
     }, option ? 600 : 100);
   }
 
