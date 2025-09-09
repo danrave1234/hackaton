@@ -145,7 +145,7 @@ export const COMBO_EFFECTS = {
 };
 
 // Player upgrade state management
-export class UpgradeManager {
+class UpgradeManager {
   constructor() {
     this.playerUpgrades = {
       [CARD_TYPES.OFFENSIVE]: 0,
@@ -242,5 +242,5 @@ export class UpgradeManager {
   }
 }
 
-// Global upgrade manager instance
+// Export singleton instance
 export const upgradeManager = new UpgradeManager();

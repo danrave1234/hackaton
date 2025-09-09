@@ -1,6 +1,8 @@
 // Debug System for level progression and development tools
 // Provides level skip functionality and visual indicators
 
+import { CARD_TYPES, UPGRADE_DEFINITIONS, COMBO_EFFECTS, upgradeManager } from './upgrades.js';
+
 export class DebugSystem {
   constructor() {
     this.enabled = true; // Set to false for production
@@ -25,10 +27,130 @@ export class DebugSystem {
     // Create visual indicator
     this.createVisualIndicator();
     
+    // Create upgrade debug panel
+    this.createUpgradeDebugPanel();
+    
     // Set up keyboard shortcuts
     this.setupKeyboardShortcuts();
     
-    console.log('[DEBUG] Debug System initialized - Press F9 to skip to level end');
+    console.log('[DEBUG] Debug System initialized - Press F9 to skip to level end, F8 to toggle upgrade panel');
+  }
+
+  createUpgradeDebugPanel() {
+    const panel = document.createElement('div');
+    panel.id = 'debug-upgrade-panel';
+    panel.style.cssText = `
+      position: fixed;
+      top: 60px;
+      right: 10px;
+      background: rgba(0, 0, 0, 0.85);
+      color: white;
+      padding: 10px;
+      font-family: monospace;
+      font-size: 12px;
+      border-radius: 4px;
+      z-index: 1000;
+      border: 2px solid #666;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+      min-width: 200px;
+      display: none;
+    `;
+
+    const header = document.createElement('div');
+    header.style.cssText = `
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #666;
+    `;
+    header.innerHTML = `
+      <span style="font-weight: bold; color: #4CAF50;">🛠️ Debug Upgrades</span>
+      <span style="cursor: pointer; padding: 0 4px;" onclick="this.parentElement.parentElement.style.display='none'">❌</span>
+    `;
+    panel.appendChild(header);
+
+    // Create sections for each card type
+    for (const [key, type] of Object.entries(CARD_TYPES)) {
+      const section = document.createElement('div');
+      section.style.cssText = 'margin-bottom: 10px;';
+      
+      const title = document.createElement('div');
+      title.style.cssText = 'font-weight: bold; color: #FFC107; margin-bottom: 4px;';
+      title.textContent = UPGRADE_DEFINITIONS[type].name;
+      section.appendChild(title);
+
+      // Create level selector
+      const select = document.createElement('select');
+      select.style.cssText = `
+        background: #333;
+        color: white;
+        border: 1px solid #666;
+        padding: 2px;
+        width: 100%;
+        margin-bottom: 4px;
+      `;
+
+      // Add level options
+      select.innerHTML = '<option value="0">None</option>' +
+        UPGRADE_DEFINITIONS[type].levels.map((level, i) => 
+          '<option value="' + (i + 1) + '">' + level.name + ' (Level ' + (i + 1) + ')</option>'
+        ).join('');
+
+      // Handle level changes
+      const self = this;
+      select.addEventListener('change', function() {
+        const level = parseInt(this.value);
+        const currentLevel = upgradeManager.getLevel(type);
+        
+        // Set the level directly in the upgrade manager
+        if (level > currentLevel) {
+          for (let i = currentLevel; i < level; i++) {
+            upgradeManager.upgradeCard(type);
+          }
+        } else {
+          // Reset and rebuild to desired level
+          upgradeManager.playerUpgrades[type] = level;
+          upgradeManager.checkForCombo();
+        }
+        
+        self.updateUpgradeDebugPanel();
+      });
+
+      section.appendChild(select);
+      panel.appendChild(section);
+    }
+
+    // Add combo status section
+    const comboSection = document.createElement('div');
+    comboSection.style.cssText = 'margin-top: 10px; padding-top: 8px; border-top: 1px solid #666;';
+    comboSection.innerHTML = '<div style="font-weight: bold; color: #FF6B6B;">Active Combos</div>';
+    
+    const comboStatus = document.createElement('div');
+    comboStatus.id = 'debug-combo-status';
+    comboStatus.style.cssText = 'color: #ccc; font-size: 11px; margin-top: 4px;';
+    comboSection.appendChild(comboStatus);
+    
+    panel.appendChild(comboSection);
+    document.body.appendChild(panel);
+    this.upgradeDebugPanel = panel;
+  }
+
+  updateUpgradeDebugPanel() {
+    if (!this.upgradeDebugPanel) return;
+
+    const comboStatus = document.getElementById('debug-combo-status');
+    if (comboStatus) {
+        const combo = upgradeManager.activeCombo;
+        if (combo && COMBO_EFFECTS[combo]) {
+          comboStatus.innerHTML = 
+            '<span style="color: #4CAF50;">✓</span> ' + COMBO_EFFECTS[combo].name + '<br>' +
+            '<small>' + COMBO_EFFECTS[combo].description + '</small>';
+        } else {
+          comboStatus.innerHTML = '<span style="color: #666;">No active combos</span>';
+        }
+      }
   }
 
   createVisualIndicator() {
@@ -77,6 +199,12 @@ export class DebugSystem {
       } else if (e.key === 'F10') {
         e.preventDefault();
         this.nextPart();
+      } else if (e.key === 'F8') {
+        e.preventDefault();
+        if (this.upgradeDebugPanel) {
+          this.upgradeDebugPanel.style.display = 
+            this.upgradeDebugPanel.style.display === 'none' ? 'block' : 'none';
+        }
       }
     });
   }
