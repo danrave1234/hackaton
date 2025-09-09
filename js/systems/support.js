@@ -68,6 +68,8 @@ export function SupportSystem(dt, world, bus) {
       };
     }
 
+    // Cooldowns tied to player state
+    player.debrisHealCooldown = Math.max(0, (player.debrisHealCooldown || 0) - dt);
     // 1. TRACTOR BEAM - Pull in power-ups
     if (effects.tractorBeam) {
       const tractorRange = effects.tractorRange || 80;
@@ -91,6 +93,16 @@ export function SupportSystem(dt, world, bus) {
           bus.emit('score:add', powerUp.value || 50);
           if (bus && typeof bus.emit === 'function') {
             bus.emit('sfx:power_up');
+          }
+
+          // Heal on debris pickup with cooldown
+          const healCooldown = 5; // seconds
+          const healAmount = 20;
+          if (player.debrisHealCooldown <= 0 && window.healthSystem && typeof window.healthSystem.healPlayer === 'function') {
+            window.healthSystem.healPlayer(player, healAmount);
+            player.debrisHealCooldown = healCooldown;
+            player._debrisHealCooldownMax = healCooldown;
+            console.log('[SUPPORT] Debris heal +', healAmount);
           }
         }
       }
