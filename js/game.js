@@ -83,6 +83,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const health = createHealthSystem();
   window.healthSystem = health;
 
+  // Set up global references for debug system
+  window.levelProgressionSystem = levelProgression;
+  window.gameWorld = world;
+  window.gameBus = bus;
+  window.SpawnSystem = SpawnSystem;
+
   // Initialize debug system (development only)
   window.debugSystem = createDebugSystem();
 

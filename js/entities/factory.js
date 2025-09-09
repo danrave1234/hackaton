@@ -38,7 +38,9 @@ export const ENEMY_TYPES = {
   HUNTER_SEEKER: 'hunter-seeker',
   GEO_LANCER: 'geo-lancer', 
   FABRICATOR: 'fabricator',
-  ASTEROID: 'asteroid'
+  ASTEROID: 'asteroid',
+  BOSS_BIO_MECHANICAL: 'boss-bio-mechanical',
+  BOSS_SENTINEL_PRIME: 'boss-sentinel-prime'
 };
 
 // Hunter-Seeker: High-speed ramming drone
@@ -177,6 +179,127 @@ export function createMinion(x, y) {
     },
     health: 1,
     scoreValue: 50
+  };
+}
+
+// Bio-Mechanical Overmind Boss (Level 5)
+export function createBioMechanicalOvermind(x, y) {
+  return {
+    tags: ['enemy', 'boss', 'bio-mechanical'],
+    pos: { x, y },
+    vel: { x: 0, y: 0 }, // Start stationary, will hover around center
+    radius: 80, // Large boss
+    color: '#8B0000', // Dark red
+    type: ENEMY_TYPES.BOSS_BIO_MECHANICAL,
+    sprite: 'boss_spaceship.png', // Use the specified sprite
+    behavior: {
+      // Simplified for 1-minute fight
+      hoverCenterX: 0, // Will be set to screen center
+      hoverCenterY: 0, // Will be set to screen center
+      hoverRadius: 100, // How far from center to hover
+      hoverAngle: 0, // Current angle around center
+      hoverSpeed: 1.0, // Angular speed
+      moveToCenter: true, // Initially move to center
+      
+      // Attack patterns - simplified
+      attackTimer: 0,
+      attackRate: 2.0, // Attack every 2 seconds
+      attackType: 0, // Cycles through different attacks
+      
+      // Movement
+      targetX: x,
+      targetY: y,
+      moveSpeed: 60
+    },
+    health: 300, // Level 5 boss HP
+    maxHealth: 300,
+    size: 'boss',
+    scoreValue: 5000,
+    isBoss: true
+  };
+}
+
+// Sentinel Prime Final Boss (Level 10)
+export function createSentinelPrime(x, y) {
+  return {
+    tags: ['enemy', 'boss', 'sentinel-prime'],
+    pos: { x, y },
+    vel: { x: 0, y: 0 }, // Start stationary, will hover around center
+    radius: 120, // Massive boss
+    color: '#FFD700', // Gold/orange
+    type: ENEMY_TYPES.BOSS_SENTINEL_PRIME,
+    sprite: 'final_boss_evil.png', // Use the specified sprite
+    behavior: {
+      // Simplified for manageable fight
+      hoverCenterX: 0, // Will be set to screen center
+      hoverCenterY: 0, // Will be set to screen center
+      hoverRadius: 120, // How far from center to hover
+      hoverAngle: 0, // Current angle around center
+      hoverSpeed: 0.8, // Angular speed (slower than level 5 boss)
+      moveToCenter: true, // Initially move to center
+      
+      // Attack patterns - simplified
+      attackTimer: 0,
+      attackRate: 1.8, // Attack every 1.8 seconds (slightly faster than level 5)
+      attackType: 0, // Cycles through different attacks
+      
+      // Movement
+      targetX: x,
+      targetY: y,
+      moveSpeed: 50
+    },
+    health: 450, // Level 10 boss HP
+    maxHealth: 450,
+    size: 'final_boss',
+    scoreValue: 25000,
+    isBoss: true,
+    isFinalBoss: true
+  };
+}
+
+// Bio-Tendril (spawned by Bio-Mechanical Overmind)
+export function createBioTendril(x, y, parentId) {
+  return {
+    tags: ['enemy', 'bio-tendril'],
+    pos: { x, y },
+    vel: { x: 0, y: 0 },
+    radius: 25,
+    color: '#654321',
+    type: 'bio-tendril',
+    behavior: {
+      parentId: parentId,
+      regenerating: false,
+      fireTimer: 0,
+      fireRate: 2.0,
+      waveOffset: Math.random() * Math.PI * 2,
+      extensionLength: 60
+    },
+    health: 40,
+    maxHealth: 40,
+    scoreValue: 200
+  };
+}
+
+// Phantom Core Drone (spawned by Sentinel Prime)
+export function createPhantomDrone(x, y, parentId) {
+  return {
+    tags: ['enemy', 'phantom-drone'],
+    pos: { x, y },
+    vel: { x: 0, y: 0 },
+    radius: 20,
+    color: '#4169E1',
+    type: 'phantom-drone',
+    behavior: {
+      parentId: parentId,
+      orbitAngle: Math.random() * Math.PI * 2,
+      orbitRadius: 150,
+      orbitSpeed: 1.5,
+      mimicTimer: 0,
+      mimicRate: 1.8
+    },
+    health: 50,
+    maxHealth: 50,
+    scoreValue: 300
   };
 }
 

@@ -140,6 +140,12 @@ function renderEnemy(ctx, enemy, time) {
     case 'minion':
       renderMinion(ctx, enemy, time);
       break;
+    case 'boss-bio-mechanical':
+      renderBoss(ctx, enemy, time);
+      break;
+    case 'boss-sentinel-prime':
+      renderBoss(ctx, enemy, time);
+      break;
     default:
       renderBasicEnemy(ctx, enemy, time);
       break;
@@ -149,6 +155,56 @@ function renderEnemy(ctx, enemy, time) {
   renderEnemyEffects(ctx, enemy, time);
   
   ctx.restore();
+}
+
+function renderBoss(ctx, enemy, time) {
+  const sheet = enemy.sprite ? ensureEnemySprite(enemy.sprite) : null;
+  const hasImg = sheet && sheet.img && sheet.img.complete && sheet.img.naturalWidth > 0;
+  
+  if (hasImg) {
+    // Render boss sprite
+    const size = enemy.radius * 2;
+    ctx.drawImage(sheet.img, -size/2, -size/2, size, size);
+  } else {
+    // Fallback rendering for bosses
+    ctx.fillStyle = enemy.color;
+    ctx.beginPath();
+    ctx.arc(0, 0, enemy.radius, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Boss indicator
+    ctx.strokeStyle = '#ffff00';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(0, 0, enemy.radius + 5, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  
+  // Boss health bar
+  if (enemy.health !== undefined && enemy.maxHealth !== undefined) {
+    const barWidth = Math.min(120, enemy.radius * 2.5);
+    const barHeight = 8;
+    const healthPercent = Math.max(0, enemy.health / enemy.maxHealth);
+    
+    // Background bar
+    ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
+    ctx.fillRect(-barWidth/2, -enemy.radius - 20, barWidth, barHeight);
+    
+    // Health bar
+    ctx.fillStyle = healthPercent > 0.3 ? 'rgba(0, 255, 0, 0.8)' : 'rgba(255, 255, 0, 0.8)';
+    ctx.fillRect(-barWidth/2, -enemy.radius - 20, barWidth * healthPercent, barHeight);
+    
+    // Border
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(-barWidth/2, -enemy.radius - 20, barWidth, barHeight);
+    
+    // Health text
+    ctx.fillStyle = 'white';
+    ctx.font = '12px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${Math.ceil(enemy.health)}/${enemy.maxHealth}`, 0, -enemy.radius - 25);
+  }
 }
 
 function renderHunterSeeker(ctx, enemy, time) {
