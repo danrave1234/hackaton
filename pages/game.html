@@ -21,9 +21,8 @@
     </div>
 
     <!-- Game canvas -->
-    <canvas id="gameCanvas" width="1280" height="720" class="tw-absolute tw-inset-0 tw-m-auto tw-w-full tw-h-full" data-disable-simple="true" data-player-sprite="@main-spaceship-new.png" data-player-sprite-grid="4x3" data-player-sprite-anim="0,1,2,3,4,5,6,7,8,9,10,11" data-player-anim-fps="12" data-player-anchor="0.35,0.5" data-bullet-sprite="@bullet.png" data-explosion-sprite="@explosion.png" data-explosion-sprite-grid="8x8" data-explosion-anim-fps="20"></canvas>
+    <canvas id="gameCanvas" width="1280" height="720" class="tw-absolute tw-inset-0 tw-m-auto tw-w-full tw-h-full" data-disable-simple="true" data-player-sprite="@main-spaceship-new.png" data-player-sprite-grid="4x3" data-player-sprite-anim="0,1,2,3,4,5,6,7,8,9,10,11" data-player-anim-fps="12" data-player-anchor="0.35,0.5" data-bullet-sprite="@bullet.png" data-explosion-sprite="@explosion.png" data-explosion-sprite-grid="8x8" data-explosion-anim-fps="25"></canvas>
 
-<<<<<<< HEAD
     <!-- Top HUD Bar -->
     <div class="tw-absolute tw-top-0 tw-left-0 tw-right-0 tw-z-40 tw-bg-gradient-to-b tw-from-black/60 tw-to-transparent tw-p-4">
       <div class="tw-flex tw-justify-between tw-items-start tw-max-w-7xl tw-mx-auto">
@@ -66,10 +65,16 @@
           </div>
         </div>
 
-        <!-- Right Side: Score -->
-        <div class="tw-bg-black/40 tw-border tw-border-white/20 tw-rounded-lg tw-px-4 tw-py-2">
-          <div class="tw-text-xs tw-text-slate-400 tw-mb-1 tw-tracking-wider">MISSION SCORE</div>
-          <div id="hudScore" class="tw-text-lg tw-text-white tw-font-mono tw-font-bold tw-tracking-wider">000000</div>
+        <!-- Right Side: Score & Progress -->
+        <div class="tw-flex tw-items-start tw-gap-4">
+          <div class="tw-bg-black/40 tw-border tw-border-white/20 tw-rounded-lg tw-px-4 tw-py-2">
+            <div class="tw-text-xs tw-text-slate-400 tw-mb-1 tw-tracking-wider">MISSION SCORE</div>
+            <div id="hudScore" class="tw-text-lg tw-text-white tw-font-mono tw-font-bold tw-tracking-wider">000000</div>
+          </div>
+          <div class="tw-bg-black/40 tw-border tw-border-white/20 tw-rounded-lg tw-px-4 tw-py-2">
+            <div class="tw-text-xs tw-text-slate-400 tw-mb-1 tw-tracking-wider">ENEMIES</div>
+            <div id="hudProgress" class="tw-text-lg tw-text-white tw-font-mono tw-font-bold tw-tracking-wider">0/10</div>
+          </div>
         </div>
 
       </div>
@@ -81,96 +86,11 @@
         <div class="tw-text-cyan-300 tw-mb-1 tw-font-medium">CONTROLS</div>
         <div>WASD / Arrows: Move</div>
         <div>Space / Enter: Shoot</div>
-        <div class="tw-text-blue-400 tw-mt-1">Q: Activate Shield</div>
-        <div class="tw-text-green-400">E: Emergency Heal</div>
-=======
-    <!-- HUD minimal -->
-    <div class="tw-absolute tw-top-3 tw-left-3 tw-text-xs tw-text-slate-300 tw-space-x-3 tw-z-40">
-      <span id="hudRound" class="tw-bg-white/5 tw-border tw-border-white/10 tw-rounded px-2 py-1">R1</span>
-      <span id="hudScore" class="tw-bg-white/5 tw-border tw-border-white/10 tw-rounded px-2 py-1">Score 000000</span>
-      <span id="hudProgress" class="tw-bg-white/5 tw-border tw-border-white/10 tw-rounded px-2 py-1">0/10</span>
-    </div>
-    
-    <!-- Controls HUD -->
-    <div class="tw-absolute tw-bottom-3 tw-left-3 tw-text-xs tw-text-slate-400 tw-space-y-1 tw-z-40">
-      <div class="tw-bg-black/20 tw-border tw-border-white/10 tw-rounded px-2 py-1">
-        <div>Movement: WASD/Arrows | Shoot: Space</div>
-        <div>EMP: Q | Override: E | Ramming: R</div>
->>>>>>> origin/main
-      </div>
-    <canvas id="gameCanvas" width="1280" height="720" class="tw-absolute tw-inset-0 tw-m-auto tw-w-full tw-h-full" data-disable-simple="true" data-player-sprite="@main-spaceship-new.png" data-player-sprite-grid="4x3" data-player-sprite-anim="0,1,2,3,4,5,6,7,8,9,10,11" data-player-anim-fps="12" data-player-anchor="0.35,0.5" data-bullet-sprite="@bullet.png" data-explosion-sprite="@explosion.png" data-explosion-sprite-grid="8x8" data-explosion-anim-fps="20"></canvas>
-
-    <!-- Top HUD Bar -->
-    <div class="tw-absolute tw-top-0 tw-left-0 tw-right-0 tw-z-40 tw-bg-gradient-to-b tw-from-black/60 tw-to-transparent tw-p-4">
-      <div class="tw-flex tw-justify-between tw-items-start tw-max-w-7xl tw-mx-auto">
-
-        <!-- Left Side: Ship Status & Health -->
-        <div class="tw-flex tw-items-start tw-gap-6">
-          <!-- Ship Info -->
-          <div class="tw-bg-black/40 tw-border tw-border-cyan-400/30 tw-rounded-lg tw-px-4 tw-py-2">
-            <div class="tw-text-xs tw-text-cyan-300 tw-font-medium tw-tracking-wider tw-mb-1">U.X.F. STILETTO</div>
-            <div class="tw-flex tw-items-center tw-gap-3 tw-text-xs">
-              <span id="hudRound" class="tw-text-amber-400 tw-font-bold">SECTOR 1</span>
-              <div class="tw-w-px tw-h-4 tw-bg-white/20"></div>
-              <span class="tw-text-slate-300">STATUS: <span class="tw-text-green-400" data-ship-status>OPERATIONAL</span></span>
-            </div>
-          </div>
-
-          <!-- Health & Shield -->
-          <div class="tw-bg-black/40 tw-border tw-border-white/20 tw-rounded-lg tw-px-4 tw-py-2 tw-min-w-[280px]">
-            <!-- Health Bar -->
-            <div class="tw-mb-2">
-              <div class="tw-flex tw-justify-between tw-items-center tw-mb-1">
-                <span class="tw-text-xs tw-text-slate-300 tw-font-medium">HULL INTEGRITY</span>
-                <span id="healthText" class="tw-text-xs tw-text-green-400 tw-font-mono tw-font-bold">100/100</span>
-              </div>
-              <div class="tw-w-full tw-bg-gray-800 tw-rounded-full tw-h-2.5 tw-border tw-border-gray-600">
-                <div id="healthBar" class="tw-bg-green-500 tw-h-full tw-rounded-full tw-transition-all tw-duration-300 tw-shadow-sm tw-shadow-green-500/50" style="width: 100%"></div>
-              </div>
-            </div>
-
-            <!-- Shield Bar -->
-            <div id="shieldContainer" class="tw-hidden">
-              <div class="tw-flex tw-justify-between tw-items-center tw-mb-1">
-                <span class="tw-text-xs tw-text-slate-300 tw-font-medium">DEFLECTOR SHIELD</span>
-                <span id="shieldText" class="tw-text-xs tw-text-blue-400 tw-font-mono tw-font-bold">0/0</span>
-              </div>
-              <div class="tw-w-full tw-bg-gray-800 tw-rounded-full tw-h-2.5 tw-border tw-border-gray-600">
-                <div id="shieldBar" class="tw-bg-blue-500 tw-h-full tw-rounded-full tw-transition-all tw-duration-300 tw-shadow-sm tw-shadow-blue-500/50" style="width: 0%"></div>
-              </div>
-            </div>
-          </div>
+        <div class="tw-mt-1">
+          <div class="tw-text-blue-400">Q: Shield / EMP Pulse</div>
+          <div class="tw-text-green-400">E: Heal / Override</div>
+          <div class="tw-text-red-400">R: Ramming Mode</div>
         </div>
-        <!-- Right Side: Score -->
-        <div class="tw-bg-black/40 tw-border tw-border-white/20 tw-rounded-lg tw-px-4 tw-py-2">
-          <div class="tw-text-xs tw-text-slate-400 tw-mb-1 tw-tracking-wider">MISSION SCORE</div>
-          <div id="hudScore" class="tw-text-lg tw-text-white tw-font-mono tw-font-bold tw-tracking-wider">000000</div>
-        </div>
-
-      </div>
-    </div>
-
-    <!-- Controls help -->
-    <div class="tw-absolute tw-bottom-6 tw-right-6 tw-z-40">
-      <div class="tw-bg-black/40 tw-border tw-border-white/20 tw-rounded-lg tw-p-3 tw-text-xs tw-text-slate-300">
-        <div class="tw-text-cyan-300 tw-mb-1 tw-font-medium">CONTROLS</div>
-        <div>WASD / Arrows: Move</div>
-        <div>Space / Enter: Shoot</div>
-        <div class="tw-text-blue-400 tw-mt-1">Q: Activate Shield</div>
-        <div class="tw-text-green-400">E: Emergency Heal</div>
-      </div>
-    <!-- HUD minimal -->
-    <div class="tw-absolute tw-top-3 tw-left-3 tw-text-xs tw-text-slate-300 tw-space-x-3 tw-z-40">
-      <span id="hudRound" class="tw-bg-white/5 tw-border tw-border-white/10 tw-rounded px-2 py-1">R1</span>
-      <span id="hudScore" class="tw-bg-white/5 tw-border tw-border-white/10 tw-rounded px-2 py-1">Score 000000</span>
-      <span id="hudProgress" class="tw-bg-white/5 tw-border tw-border-white/10 tw-rounded px-2 py-1">0/10</span>
-    </div>
-
-    <!-- Controls HUD -->
-    <div class="tw-absolute tw-bottom-3 tw-left-3 tw-text-xs tw-text-slate-400 tw-space-y-1 tw-z-40">
-      <div class="tw-bg-black/20 tw-border tw-border-white/10 tw-rounded px-2 py-1">
-        <div>Movement: WASD/Arrows | Shoot: Space</div>
-        <div>EMP: Q | Override: E | Ramming: R</div>
       </div>
     </div>
   </main>

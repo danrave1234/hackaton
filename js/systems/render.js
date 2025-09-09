@@ -95,6 +95,318 @@ function getSectorName(sector) {
   return sectorNames[sector] || 'sun';
 }
 
+function renderEnemy(ctx, enemy, time) {
+  ctx.save();
+  ctx.translate(enemy.pos.x, enemy.pos.y);
+  
+  // Render based on enemy type
+  switch (enemy.type) {
+    case 'hunter-seeker':
+      renderHunterSeeker(ctx, enemy, time);
+      break;
+    case 'geo-lancer':
+      renderGeoLancer(ctx, enemy, time);
+      break;
+    case 'fabricator':
+      renderFabricator(ctx, enemy, time);
+      break;
+    case 'asteroid':
+      renderAsteroid(ctx, enemy, time);
+      break;
+    case 'minion':
+      renderMinion(ctx, enemy, time);
+      break;
+    default:
+      renderBasicEnemy(ctx, enemy, time);
+      break;
+  }
+  
+  // Render common enemy effects (EMP, control, etc.)
+  renderEnemyEffects(ctx, enemy, time);
+  
+  ctx.restore();
+}
+
+function renderHunterSeeker(ctx, enemy, time) {
+  const behavior = enemy.behavior || {};
+  
+  // Arrow-head shaped drone
+  ctx.fillStyle = enemy.color;
+  ctx.beginPath();
+  ctx.moveTo(enemy.radius, 0); // Point
+  ctx.lineTo(-enemy.radius * 0.6, -enemy.radius * 0.4);
+  ctx.lineTo(-enemy.radius * 0.3, 0);
+  ctx.lineTo(-enemy.radius * 0.6, enemy.radius * 0.4);
+  ctx.closePath();
+  ctx.fill();
+  
+  // Red optical sensor
+  ctx.fillStyle = behavior.phase === 'lock-on' ? '#ff0000' : '#ffaa00';
+  ctx.beginPath();
+  ctx.arc(enemy.radius * 0.7, 0, 3, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Thruster effect when pursuing
+  if (behavior.phase === 'pursuit') {
+    ctx.fillStyle = '#00aaff';
+    for (let i = 0; i < 3; i++) {
+      const flameX = -enemy.radius - (i * 4);
+      const flameY = (Math.random() - 0.5) * 6;
+      ctx.beginPath();
+      ctx.arc(flameX, flameY, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+}
+
+function renderGeoLancer(ctx, enemy, time) {
+  const behavior = enemy.behavior || {};
+  
+  if (enemy.disguised || !behavior.active) {
+    // Render as asteroid
+    ctx.fillStyle = enemy.color;
+    // Draw irregular asteroid shape
+    ctx.beginPath();
+    const points = 8;
+    for (let i = 0; i < points; i++) {
+      const angle = (i / points) * Math.PI * 2;
+      const variation = 0.7 + Math.sin(time * 0.5 + i) * 0.3;
+      const radius = enemy.radius * variation;
+      const x = Math.cos(angle) * radius;
+      const y = Math.sin(angle) * radius;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fill();
+  } else {
+    // Activated state - show weapon
+    ctx.fillStyle = enemy.color;
+    ctx.beginPath();
+    ctx.arc(0, 0, enemy.radius, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Weapon barrel
+    ctx.fillStyle = '#ff6600';
+    ctx.fillRect(enemy.radius * 0.5, -3, enemy.radius * 0.8, 6);
+    
+    // Charging indicator
+    if (behavior.chargeTimer > 0) {
+      const chargeProgress = 1 - (behavior.chargeTimer / behavior.chargeTime);
+      ctx.strokeStyle = '#ffff00';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(0, 0, enemy.radius + 8, -Math.PI/2, -Math.PI/2 + (chargeProgress * Math.PI * 2));
+      ctx.stroke();
+    }
+  }
+}
+
+function renderFabricator(ctx, enemy, time) {
+  // Large, boxy design
+  ctx.fillStyle = enemy.color;
+  
+  // Main body
+  const size = enemy.radius;
+  ctx.fillRect(-size, -size * 0.6, size * 2, size * 1.2);
+  
+  // Assembly ports (glowing when spawning)
+  const spawning = enemy.behavior && enemy.behavior.spawnTimer > enemy.behavior.spawnCycle - 0.5;
+  ctx.fillStyle = spawning ? '#00ff00' : '#444444';
+  
+  // Left assembly port
+  ctx.fillRect(-size * 1.2, -size * 0.3, size * 0.4, size * 0.6);
+  // Right assembly port  
+  ctx.fillRect(size * 0.8, -size * 0.3, size * 0.4, size * 0.6);
+  
+  // Central "eye"
+  ctx.fillStyle = '#ff0000';
+  ctx.beginPath();
+  ctx.arc(0, 0, size * 0.3, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Twin cannons
+  ctx.fillStyle = '#888888';
+  ctx.fillRect(size * 0.3, -size * 0.8, size * 0.4, size * 0.3);
+  ctx.fillRect(size * 0.3, size * 0.5, size * 0.4, size * 0.3);
+  
+  // Health indicator bars
+  if (enemy.health) {
+    ctx.fillStyle = enemy.health > 4 ? '#00ff00' : enemy.health > 2 ? '#ffff00' : '#ff0000';
+    const barWidth = (enemy.health / 8) * size * 2;
+    ctx.fillRect(-size, -size - 8, barWidth, 4);
+  }
+}
+
+function renderAsteroid(ctx, enemy, time) {
+  const behavior = enemy.behavior || {};
+  
+  // Rotate the asteroid
+  ctx.rotate(behavior.rotation || 0);
+  
+  ctx.fillStyle = enemy.color;
+  
+  // Irregular asteroid shape based on size
+  ctx.beginPath();
+  const points = enemy.size === 'large' ? 12 : enemy.size === 'small' ? 6 : 8;
+  for (let i = 0; i < points; i++) {
+    const angle = (i / points) * Math.PI * 2;
+    const variation = 0.6 + Math.sin(time * 0.2 + i) * 0.4;
+    const radius = enemy.radius * variation;
+    const x = Math.cos(angle) * radius;
+    const y = Math.sin(angle) * radius;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fill();
+  
+  // Surface details
+  ctx.fillStyle = '#666666';
+  for (let i = 0; i < 3; i++) {
+    const x = (Math.random() - 0.5) * enemy.radius;
+    const y = (Math.random() - 0.5) * enemy.radius;
+    const size = Math.random() * 3 + 1;
+    ctx.beginPath();
+    ctx.arc(x, y, size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function renderMinion(ctx, enemy, time) {
+  // Small, swarming enemy
+  ctx.fillStyle = enemy.color;
+  
+  // Main body - smaller than basic enemies
+  ctx.beginPath();
+  ctx.arc(0, 0, enemy.radius, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Erratic movement trail
+  ctx.strokeStyle = enemy.color;
+  ctx.lineWidth = 1;
+  ctx.globalAlpha = 0.3;
+  ctx.beginPath();
+  ctx.moveTo(-enemy.radius * 2, 0);
+  ctx.lineTo(-enemy.radius * 4, Math.sin(time * 5) * enemy.radius);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  
+  // Blinking "angry" core
+  if (Math.floor(time * 8) % 2) {
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(0, 0, enemy.radius * 0.4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function renderBasicEnemy(ctx, enemy, time) {
+  // Standard circular enemy
+  ctx.fillStyle = enemy.color || '#fca5a5';
+  ctx.beginPath();
+  ctx.arc(0, 0, enemy.radius, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Simple visual detail
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.arc(enemy.radius * 0.3, -enemy.radius * 0.3, enemy.radius * 0.2, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function renderEnemyEffects(ctx, enemy, time) {
+  // Visual effects for special enemy states
+  if (enemy.empStunned) {
+    // EMP stun effect - electric sparks
+    ctx.strokeStyle = '#FFD700';
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 4; i++) {
+      const angle = (time * 10 + i * Math.PI / 2) % (Math.PI * 2);
+      const sparkX = Math.cos(angle) * (enemy.radius + 5);
+      const sparkY = Math.sin(angle) * (enemy.radius + 5);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(sparkX, sparkY);
+      ctx.stroke();
+    }
+  }
+
+  if (enemy.controlled) {
+    // Controlled enemy indicator - green glow
+    ctx.save();
+    ctx.shadowColor = '#4CAF50';
+    ctx.shadowBlur = 10;
+    ctx.strokeStyle = '#4CAF50';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, 0, enemy.radius + 4, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+  
+  // Health indicator for enemies with multiple hit points
+  if (enemy.health && enemy.health > 1) {
+    const maxHealth = 8; // Assume max health for fabricator
+    const healthRatio = enemy.health / maxHealth;
+    ctx.fillStyle = healthRatio > 0.6 ? '#00ff00' : healthRatio > 0.3 ? '#ffff00' : '#ff0000';
+    ctx.fillRect(-enemy.radius, -enemy.radius - 12, (enemy.radius * 2) * healthRatio, 3);
+    
+    // Health bar border
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(-enemy.radius, -enemy.radius - 12, enemy.radius * 2, 3);
+  }
+}
+
+function renderEnemyBullet(ctx, bullet, time) {
+  ctx.save();
+  ctx.translate(bullet.pos.x, bullet.pos.y);
+  
+  if ((bullet.tags||[]).includes('geo-lance')) {
+    // Energy lance - bright beam
+    ctx.fillStyle = bullet.color || '#ffaa00';
+    const w = bullet.rect?.w || 20;
+    const h = bullet.rect?.h || 4;
+    ctx.fillRect(-w/2, -h/2, w, h);
+    
+    // Glow effect
+    ctx.shadowColor = bullet.color || '#ffaa00';
+    ctx.shadowBlur = 8;
+    ctx.fillRect(-w/2, -h/2, w, h);
+  } else if ((bullet.tags||[]).includes('plasma-sphere')) {
+    // Plasma sphere - destructible projectile
+    ctx.fillStyle = bullet.color || '#aa00ff';
+    ctx.beginPath();
+    ctx.arc(0, 0, bullet.radius || 8, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Pulsing energy effect
+    const pulseRadius = (bullet.radius || 8) + Math.sin(time * 6) * 2;
+    ctx.strokeStyle = bullet.color || '#aa00ff';
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = 0.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, pulseRadius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    
+    // Health indicator for destructible projectiles
+    if (bullet.destructible && bullet.health && bullet.health > 1) {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(-bullet.radius, -bullet.radius - 8, (bullet.radius * 2) * (bullet.health / 2), 2);
+    }
+  } else {
+    // Generic enemy bullet
+    ctx.fillStyle = bullet.color || '#ff0000';
+    const w = bullet.rect?.w || 8;
+    const h = bullet.rect?.h || 8;
+    ctx.fillRect(-w/2, -h/2, w, h);
+  }
+  
+  ctx.restore();
+}
+
 export function RenderSystem(dt, world) {
   const { ctx, canvas, sector } = world;
   
@@ -272,40 +584,51 @@ export function RenderSystem(dt, world) {
           if (window.DEBUG_BULLETS) console.log('Bullet rendered as rect:', bw, 'x', bh);
         }
       }
-    } else if ((e.tags||[]).includes('enemy')) {
-      ctx.fillStyle = e.color || '#fca5a5';
-      ctx.beginPath();
-      ctx.arc(e.pos.x, e.pos.y, e.radius, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Visual effects for special enemy states
-      if (e.empStunned) {
-        // EMP stun effect - electric sparks
-        ctx.strokeStyle = '#FFD700';
-        ctx.lineWidth = 2;
-        for (let i = 0; i < 4; i++) {
-          const angle = (world.time * 10 + i * Math.PI / 2) % (Math.PI * 2);
-          const sparkX = e.pos.x + Math.cos(angle) * (e.radius + 5);
-          const sparkY = e.pos.y + Math.sin(angle) * (e.radius + 5);
-          ctx.beginPath();
-          ctx.moveTo(e.pos.x, e.pos.y);
-          ctx.lineTo(sparkX, sparkY);
-          ctx.stroke();
-        }
-      }
-
-      if (e.controlled) {
-        // Controlled enemy indicator - green glow
+    } else if ((e.tags||[]).includes('enemy-bullet')) {
+      // Render enemy bullets with distinct colors and effects
+      const bw = e.rect?.w || 8;
+      const bh = e.rect?.h || 8;
+      
+      if ((e.tags||[]).includes('geo-lance')) {
+        // Geo-Lancer energy lance - elongated with glow
         ctx.save();
-        ctx.shadowColor = '#4CAF50';
         ctx.shadowBlur = 10;
-        ctx.strokeStyle = '#4CAF50';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(e.pos.x, e.pos.y, e.radius + 4, 0, Math.PI * 2);
-        ctx.stroke();
+        ctx.shadowColor = e.color || '#ffaa00';
+        ctx.fillStyle = e.color || '#ffaa00';
+        ctx.fillRect(e.pos.x - bw/2, e.pos.y - bh/2, bw, bh);
         ctx.restore();
+      } else if ((e.tags||[]).includes('plasma-sphere')) {
+        // Fabricator plasma sphere - circular with pulsing glow
+        const radius = e.radius || 8;
+        ctx.save();
+        
+        // Pulsing glow effect
+        const pulseIntensity = 0.5 + 0.5 * Math.sin(world.time * 6);
+        ctx.shadowBlur = 15 * pulseIntensity;
+        ctx.shadowColor = e.color || '#aa00ff';
+        
+        // Outer glow
+        ctx.beginPath();
+        ctx.arc(e.pos.x, e.pos.y, radius * 1.5, 0, Math.PI * 2);
+        ctx.fillStyle = `${e.color || '#aa00ff'}30`;
+        ctx.fill();
+        
+        // Core sphere
+        ctx.beginPath();
+        ctx.arc(e.pos.x, e.pos.y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = e.color || '#aa00ff';
+        ctx.fill();
+        
+        ctx.restore();
+      } else {
+        // Generic enemy bullet
+        ctx.fillStyle = e.color || '#ff4444';
+        ctx.fillRect(e.pos.x - bw/2, e.pos.y - bh/2, bw, bh);
       }
+    } else if ((e.tags||[]).includes('enemy')) {
+      renderEnemy(ctx, e, world.time);
+    } else if ((e.tags||[]).includes('enemy-bullet')) {
+      renderEnemyBullet(ctx, e, world.time);
     } else if ((e.tags||[]).includes('powerup')) {
       // Power-up rendering
       ctx.save();

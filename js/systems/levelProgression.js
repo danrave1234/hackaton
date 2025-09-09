@@ -7,6 +7,15 @@ export function createLevelProgressionSystem() {
   let currentLevel = 1;
   let levelCompleteTriggered = false;
   let isProcessingLevelComplete = false;
+  
+  // Initialize sector-based enemy counts
+  if (window.spawnSystem && window.spawnSystem.setSector) {
+    window.spawnSystem.setSector(currentLevel);
+    const sectorConfig = window.spawnSystem.getSectorConfig();
+    if (sectorConfig) {
+      enemiesPerLevel = Object.values(sectorConfig.enemies).reduce((sum, count) => sum + count, 0);
+    }
+  }
 
   function showLevelCompleteScreen(onContinue) {
     const levelCompleteElement = document.createElement('div');
@@ -119,7 +128,15 @@ export function createLevelProgressionSystem() {
   function proceedToNextLevel() {
     currentLevel++;
     enemiesKilled = 0;
-    enemiesPerLevel = Math.min(20, 10 + currentLevel * 2); // Increase difficulty
+    
+    // Update enemies per level based on spawn system configuration
+    if (window.spawnSystem && window.spawnSystem.getSectorConfig) {
+      const sectorConfig = window.spawnSystem.getSectorConfig();
+      enemiesPerLevel = Object.values(sectorConfig.enemies).reduce((sum, count) => sum + count, 0);
+    } else {
+      enemiesPerLevel = Math.min(20, 10 + currentLevel * 2); // Fallback
+    }
+    
     levelCompleteTriggered = false;
     isProcessingLevelComplete = false;
 
@@ -132,13 +149,15 @@ export function createLevelProgressionSystem() {
 
     // Update HUD
     const hudRound = document.getElementById('hudRound');
-    if (hudRound) hudRound.textContent = `R${currentLevel}`;
+    if (hudRound) hudRound.textContent = `SECTOR ${currentLevel}`;
+    
+    const hudProgress = document.getElementById('hudProgress');
+    if (hudProgress) hudProgress.textContent = `${enemiesKilled}/${enemiesPerLevel}`;
 
-    // Resume enemy spawning with increased difficulty
+    // Set current sector in spawn system and resume spawning
     if (window.spawnSystem) {
+      window.spawnSystem.setSector(currentLevel);
       window.spawnSystem.resume();
-      // Increase spawn rate for higher levels
-      window.spawnSystem.setSpawnRate(Math.max(0.3, 0.9 - (currentLevel * 0.1)));
     }
   }
 
@@ -149,6 +168,12 @@ export function createLevelProgressionSystem() {
         bus.on('enemy:died', () => {
           enemiesKilled++;
           console.log(`[LEVEL PROGRESSION] Enemy killed. Progress: ${enemiesKilled}/${enemiesPerLevel}`);
+          
+          // Update HUD progress
+          const hudProgress = document.getElementById('hudProgress');
+          if (hudProgress) {
+            hudProgress.textContent = `${enemiesKilled}/${enemiesPerLevel}`;
+          }
           
           // Check if level is complete
           if (enemiesKilled >= enemiesPerLevel && !levelCompleteTriggered) {
