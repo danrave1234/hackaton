@@ -1,5 +1,6 @@
 // Level Progression System - Manages level completion and progression
 import { cardSelectionScreen } from './cardSelection.js';
+import { markForRemoval, flushRemovals } from '../world/world.js';
 
 export function createLevelProgressionSystem() {
   let enemiesKilled = 0;
@@ -154,9 +155,10 @@ export function createLevelProgressionSystem() {
     const hudProgress = document.getElementById('hudProgress');
     if (hudProgress) hudProgress.textContent = `${enemiesKilled}/${enemiesPerLevel}`;
 
-    // Set current sector in spawn system and resume spawning
+    // Reset and configure spawn system for new level
     if (window.spawnSystem) {
       window.spawnSystem.setSector(currentLevel);
+      window.spawnSystem.reset(); // Reset spawn state
       window.spawnSystem.resume();
     }
   }
@@ -179,10 +181,16 @@ export function createLevelProgressionSystem() {
           if (enemiesKilled >= enemiesPerLevel && !levelCompleteTriggered) {
             levelCompleteTriggered = true;
             
-            // Stop enemy spawning
+            // Stop enemy spawning and despawn all enemies
             if (window.spawnSystem) {
               window.spawnSystem.pause();
             }
+            
+            // Despawn all enemies
+            const enemies = world.byTag.get('enemy') || new Set();
+            const asteroids = world.byTag.get('asteroid') || new Set();
+            [...enemies, ...asteroids].forEach(id => markForRemoval(world, id));
+            flushRemovals(world);
             
             // Wait a moment for last effects, then show level complete
             setTimeout(() => {
@@ -208,6 +216,21 @@ export function createLevelProgressionSystem() {
       const hudProgress = document.getElementById('hudProgress');
       if (hudProgress) {
         hudProgress.textContent = `${enemiesKilled}/${enemiesPerLevel}`;
+      }
+
+      // Check if we need to force level completion due to missed enemies
+      if (!levelCompleteTriggered && window.spawnSystem) {
+        const spawnComplete = window.spawnSystem.isSectorComplete();
+        const enemies = world.byTag.get('enemy') || new Set();
+        const asteroids = world.byTag.get('asteroid') || new Set();
+        const remainingEnemies = enemies.size + asteroids.size;
+
+        // If spawn is complete and no enemies left, but we haven't hit the target
+        if (spawnComplete && remainingEnemies === 0 && enemiesKilled < enemiesPerLevel) {
+          console.log(`[LEVEL PROGRESSION] Force completing level due to missed enemies. Killed: ${enemiesKilled}/${enemiesPerLevel}`);
+          enemiesKilled = enemiesPerLevel;
+          bus.emit('enemy:died'); // This will trigger level completion
+        }
       }
     },
 
