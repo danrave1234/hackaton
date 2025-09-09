@@ -58,7 +58,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Create world and systems
   const world = createWorld(ctx, canvas);
+  // Expose world for render helpers (e.g., seeker facing player)
+  window.currentWorld = world;
   const bus = createEventBus();
+  // Ensure world sector is set immediately so spawners/renderers read correct sector
+  world.sector = round;
 
   // Input
   attachInputListeners();

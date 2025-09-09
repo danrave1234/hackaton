@@ -21,11 +21,12 @@ export function createEnemy(x, y, r = 16, type = 'basic') {
     radius: r,
     color: '#fca5a5',
     type: type,
-    // BASIC enemy uses vector triangle look (no sprite)
-    sprite: undefined,
-    spriteGrid: undefined,
-    spriteAnim: undefined,
-    spriteFps: undefined,
+    // Use spritesheet for BASIC enemy (@Basic enemy.png)
+    sprite: type === 'basic' ? '@basic_enemy.png' : undefined,
+    // 4x4 grid: first row is flying animation
+    spriteGrid: type === 'basic' ? '4x4' : undefined,
+    spriteAnim: type === 'basic' ? '0,1,2,3' : undefined,
+    spriteFps: type === 'basic' ? 10 : undefined,
     spriteIndex: 0,
     health: 2
   };
@@ -46,11 +47,15 @@ export function createHunterSeeker(x, y) {
     tags: ['enemy', 'hunter-seeker'],
     pos: { x, y },
     vel: { x: -80, y: 0 }, // Slower initial movement
-    radius: 12,
+    radius: 18,
     color: '#ff4444',
     type: ENEMY_TYPES.HUNTER_SEEKER,
-    // Sprite available in assets (single frame)
-    sprite: '@Basic enemy.png',
+    // Sprite available in assets (4x4 sheet)
+    sprite: '@basic_enemy.png',
+    spriteGrid: '4x4',
+    spriteAnim: '0,1,2,3',
+    spriteFps: 10,
+    spriteIndex: 0,
     behavior: {
       phase: 'lock-on', // 'lock-on', 'pursuit', 'correction'
       lockTimer: 1.0, // Time to acquire target
@@ -97,11 +102,14 @@ export function createFabricator(x, y) {
     tags: ['enemy', 'fabricator'],
     pos: { x, y },
     vel: { x: -60, y: 0 }, // Slow movement
-    radius: 35,
+    radius: 48,
     color: '#666666',
     type: ENEMY_TYPES.FABRICATOR,
     // Sprite available in assets
     sprite: '@the_fabricator_summoner_enemy_type_3.png',
+    // Spritesheet layout based on provided image (3 columns x 3 rows)
+    spriteGrid: '3x3',
+    spriteIndex: 0,
     behavior: {
       spawnCycle: 3.0,
       spawnTimer: 0,
@@ -151,7 +159,7 @@ export function createMinion(x, y) {
     tags: ['enemy', 'minion'],
     pos: { x, y },
     vel: { x: -200 + Math.random() * 100, y: (Math.random() - 0.5) * 80 },
-    radius: 8,
+    radius: 12,
     color: '#ff8888',
     type: 'minion',
     // Sprite available in assets

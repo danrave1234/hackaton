@@ -70,7 +70,20 @@ export function SpawnSystem(dt, world) {
     SpawnSystem.spawnRate = 0.9; // Default spawn rate
     SpawnSystem.paused = false;
     SpawnSystem.initialized = true;
-    SpawnSystem.currentSector = 1;
+    // Initialize sector from world or URL param so late systems don't miss it
+    let initialSector = 1;
+    if (world && typeof world.sector === 'number') {
+      initialSector = Math.max(1, Math.floor(world.sector));
+    } else {
+      try {
+        const params = new URLSearchParams(location.search);
+        const round = Math.max(1, parseInt(params.get('round') || '1', 10) || 1);
+        initialSector = round;
+      } catch (_) {
+        initialSector = 1;
+      }
+    }
+    SpawnSystem.currentSector = initialSector;
 
     // Expose control methods globally for level progression
     window.spawnSystem = {
@@ -86,6 +99,10 @@ export function SpawnSystem(dt, world) {
       getCurrentSector: () => SpawnSystem.currentSector,
       getSectorConfig: () => SECTOR_CONFIG[SpawnSystem.currentSector] || SECTOR_CONFIG[1]
     };
+
+    // Apply spawn rate for the determined initial sector immediately
+    const initCfg = SECTOR_CONFIG[SpawnSystem.currentSector] || SECTOR_CONFIG[1];
+    SpawnSystem.spawnRate = initCfg.spawnRate;
   }
   
   // Don't spawn if paused

@@ -127,10 +127,19 @@ export function CollisionSystem(dt, world, bus) {
   // Enemy bullets - Player collisions
   for (const eb of enemyBullets) {
     for (const p of players) {
-      const px = p.pos.x;
-      const py = p.pos.y;
+      // Convert player's center position into top-left using anchor from canvas dataset
       const pw = p.size?.w || 36;
       const ph = p.size?.h || 18;
+      let ax = 0.5, ay = 0.5;
+      try {
+        const anchorStr = world.canvas?.dataset?.playerAnchor || '';
+        if (anchorStr) {
+          const parts = anchorStr.split(',').map((v) => parseFloat(v.trim()));
+          if (parts.length === 2 && parts.every((n) => Number.isFinite(n))) { ax = parts[0]; ay = parts[1]; }
+        }
+      } catch {}
+      const px = p.pos.x - pw * ax;
+      const py = p.pos.y - ph * ay;
       
       // Check collision between enemy bullet and player rectangle
       const bx = eb.pos.x;
@@ -173,15 +182,24 @@ export function CollisionSystem(dt, world, bus) {
   // Player-Enemy collisions
   for (const p of players) {
     for (const e of enemies) {
-      const px = p.pos.x;
-      const py = p.pos.y;
+      // Player rect aligned with sprite anchor
       const pw = p.size?.w || 36;
       const ph = p.size?.h || 18;
+      let ax = 0.5, ay = 0.5;
+      try {
+        const anchorStr = world.canvas?.dataset?.playerAnchor || '';
+        if (anchorStr) {
+          const parts = anchorStr.split(',').map((v) => parseFloat(v.trim()));
+          if (parts.length === 2 && parts.every((n) => Number.isFinite(n))) { ax = parts[0]; ay = parts[1]; }
+        }
+      } catch {}
+      const px = p.pos.x - pw * ax;
+      const py = p.pos.y - ph * ay;
       
       // Check collision between player rectangle and enemy circle
       const dx = Math.max(e.pos.x - e.radius, Math.min(px + pw/2, e.pos.x + e.radius));
       const dy = Math.max(e.pos.y - e.radius, Math.min(py + ph/2, e.pos.y + e.radius));
-      const distanceSquared = (dx - px - pw/2) * (dx - px - pw/2) + (dy - py - ph/2) * (dy - py - ph/2);
+      const distanceSquared = (dx - (px + pw/2)) * (dx - (px + pw/2)) + (dy - (py + ph/2)) * (dy - (py + ph/2));
       
       if (distanceSquared < e.radius * e.radius) {
         // Get upgrade effects

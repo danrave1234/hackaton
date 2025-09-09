@@ -11,7 +11,14 @@ function resolveSpriteSrc(raw) {
   if (!raw) return undefined;
   let out = raw;
   if (out.startsWith('@asset/')) out = out.replace(/^@asset\//, 'asset/');
-  else if (out.startsWith('@')) out = 'asset/spritesheet/' + out.slice(1);
+  else if (out.startsWith('@')) {
+    // Support friendly aliases
+    const lower = out.toLowerCase();
+    if (lower === '@basic_enemy.png') {
+      return 'asset/spritesheet/Basic enemy.png';
+    }
+    out = 'asset/spritesheet/' + out.slice(1);
+  }
   // If path starts with asset/ and page is served from /pages/, prefix ../
   if (out.startsWith('asset/')) {
     const inPages = /\/pages\//.test(location.pathname);
@@ -149,6 +156,16 @@ function renderHunterSeeker(ctx, enemy, time) {
   const sheet = enemy.sprite ? ensureEnemySprite(enemy.sprite) : null;
   const hasImg = sheet && sheet.img && sheet.img.complete && sheet.img.naturalWidth > 0;
   
+  // Rotate to face the player direction if available
+  let angle = 0;
+  try {
+    const player = Array.from(window.currentWorld?.entities?.values?.() || []).find((e) => (e.tags||[]).includes('player'));
+    if (player) {
+      angle = Math.atan2(player.pos.y - enemy.pos.y, player.pos.x - enemy.pos.x);
+    }
+  } catch {}
+  ctx.rotate(angle);
+
   if (hasImg) {
     const size = enemy.radius * 2.0;
     ctx.drawImage(sheet.img, -size/2, -size/2, size, size);
@@ -191,9 +208,27 @@ function renderGeoLancer(ctx, enemy, time) {
   const m = /^(\d+)x(\d+)$/i.exec(gridStr.trim());
   const cols = m ? parseInt(m[1], 10) : 1;
   const rows = m ? parseInt(m[2], 10) : 1;
-  const idx = Math.max(0, enemy.spriteIndex || 0);
+  let idx = Math.max(0, enemy.spriteIndex || 0);
   const colW = hasImg ? Math.floor(sheet.img.naturalWidth / Math.max(1, cols)) : 0;
   const rowH = hasImg ? Math.floor(sheet.img.naturalHeight / Math.max(1, rows)) : 0;
+
+  // Choose frame by state to match provided 3x4 sheet
+  if (enemy.health !== undefined && enemy.health <= 2) {
+    idx = (Math.floor(time * 6) % 2) ? 6 : 7; // destroyed flicker
+  } else if (behavior.active) {
+    if (behavior.lastShot !== undefined && behavior.lastShot < 0.15) {
+      idx = 8; // firing
+    } else if (behavior.chargeTimer && behavior.chargeTimer > 0) {
+      idx = 5; // charge up
+    } else if (behavior.justActivated && behavior.justActivated > 0) {
+      idx = 3; // activation
+    } else {
+      idx = (Math.floor(time * 3) % 2) ? 1 : 2; // active idle
+    }
+  } else {
+    idx = 0; // inactive
+  }
+
   const cx = cols > 0 ? (idx % cols) : 0;
   const cy = rows > 0 ? Math.floor(idx / cols) % rows : 0;
   const sx = cx * colW;
@@ -254,9 +289,47 @@ function renderFabricator(ctx, enemy, time) {
   const hasImg = sheet && sheet.img && sheet.img.complete && sheet.img.naturalWidth > 0;
   const size = enemy.radius;
   if (hasImg) {
+    // Support grid-based slicing for the summoner sheet (default 3x3)
+    const gridStr = enemy.spriteGrid || '3x3';
+    const m = /^([0-9]+)x([0-9]+)$/i.exec(gridStr.trim());
+    const cols = m ? parseInt(m[1], 10) : 1;
+    const rows = m ? parseInt(m[2], 10) : 1;
+
+    // Choose a frame based on behavior/state
+    let idx = Math.max(0, enemy.spriteIndex || 0);
+    const b = enemy.behavior || {};
+
+    // Summoning animation near the end of the spawn cycle
+    if (typeof b.spawnCycle === 'number' && typeof b.spawnTimer === 'number') {
+      const remain = b.spawnCycle - b.spawnTimer;
+      if (remain <= 0.6) idx = 1; // Summoning - start
+      if (remain <= 0.3) idx = 2; // Summoning - deploy
+    }
+
+    // Attacking animation during attack cycle window
+    if (typeof b.attackCycle === 'number' && typeof b.attackTimer === 'number') {
+      const t = b.attackTimer;
+      if (t <= 0.2) idx = 3; // Attacking - start
+      else if (t <= 0.5) idx = 4; // Attacking - soft/charge
+      else if (t >= b.attackCycle - 0.15) idx = 5; // Firing
+    }
+
+    // Low-health destroyed looks
+    if (enemy.health !== undefined && enemy.health <= 2) {
+      idx = 6; // Destroyed stage 1
+      if ((time % 0.3) > 0.15) idx = 7; // flicker between destroyed frames
+    }
+
+    const colW = Math.floor(sheet.img.naturalWidth / Math.max(1, cols));
+    const rowH = Math.floor(sheet.img.naturalHeight / Math.max(1, rows));
+    const cx = cols > 0 ? (idx % cols) : 0;
+    const cy = rows > 0 ? Math.floor(idx / cols) % rows : 0;
+    const sx = cx * colW;
+    const sy = cy * rowH;
+
     const w = size * 2.2;
     const h = size * 1.6;
-    ctx.drawImage(sheet.img, -w/2, -h/2, w, h);
+    ctx.drawImage(sheet.img, sx, sy, colW, rowH, -w/2, -h/2, w, h);
   } else {
     // Large, boxy design fallback
     ctx.fillStyle = enemy.color;
