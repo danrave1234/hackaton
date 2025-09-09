@@ -1,20 +1,30 @@
-# Simple HTML/CSS/JavaScript Blank Project
+## Hackaton Game
 
-This is a minimal starter with organized folders:
-- index.html
-- style/styles.css
-- js/script.js
+A browser-based JavaScript game that runs directly from `index.html` with no build steps.
 
-How to use:
-1. Open index.html in your browser (double-click it or drag it into a browser window).
-2. You should see a simple page with a button. Click the button to confirm JavaScript is working.
+### Run the project (via index.html)
+- **Option 1 (double-click/open):**
+  1. Locate `index.html` in the project root.
+  2. Double-click it (or right-click → Open With → your browser).
 
-Notes:
-- The root index.html links to CSS and JS using: style/styles.css and js/script.js
-- You can add more pages to the pages/ folder; those pages should link using ../style/styles.css and ../js/script.js.
+- **Option 2 (drag-and-drop):**
+  1. Open your browser.
+  2. Drag `index.html` into the browser window.
 
-Tailwind CSS:
-- Tailwind is included via the official CDN for a zero-build setup.
-- All Tailwind classes are prefixed with `tw-` to avoid conflicts with existing styles (e.g., use `tw-text-cyan-400` instead of `text-cyan-400`).
-- Example usage: `<h1 class="tw-text-cyan-400 tw-font-semibold">Hello</h1>`
-- If you later need a production build setup (purging unused styles, custom plugins), migrate to the Tailwind CLI/PostCSS workflow.
+- **Optional: serve locally (avoids any file:// restrictions):**
+  - Python 3: `python -m http.server 5500` then open `http://localhost:5500/index.html`
+
+### Project structure
+- `index.html`: Main entry point
+- `style/styles.css`: Global styles
+- `js/`: Game engine, systems, and scripts
+  - `engine/`: Core loop and events
+  - `entities/`: Game entities (e.g., `factory.js`)
+  - `systems/`: Rendering, movement, AI, collisions, etc.
+  - `game.js`, `script.js`: Game initialization and glue code
+- `asset/`: Images, spritesheets, audio, and 3D models
+- `pages/`: Additional pages (`game.html`, `leaderboard.html`, examples)
+
+### Notes
+- No build tools are required; assets are loaded via relative paths from `index.html`.
+- If a browser blocks some asset loads using `file://`, use the optional local server method above.
