@@ -2,6 +2,8 @@
 import { cardSelectionScreen } from './cardSelection.js';
 import { spawnExplosion } from './explosion.js';
 import { markForRemoval } from '../world/world.js';
+import { createBioMechanicalOvermind, createSentinelPrime } from '../entities/factory.js';
+import { addEntity } from '../world/world.js';
 
 export function createLevelProgressionSystem() {
   // Travel-based progression
@@ -13,6 +15,8 @@ export function createLevelProgressionSystem() {
   let levelCompleteTriggered = false;
   let isProcessingLevelComplete = false;
   let isGameOver = false;        // stop progression if player dies
+  let bossSpawned = false;       // track if boss has been spawned for this level
+  let bossDefeated = false;      // track if boss has been defeated
 
   function computeTravelTargetForLevel(level) {
     // Scale duration modestly with sector (clamped)
@@ -20,6 +24,34 @@ export function createLevelProgressionSystem() {
     const increment = 2;      // add per level
     const maxSeconds = 48;    // cap
     return Math.min(maxSeconds, base + (level - 1) * increment);
+  }
+
+  function isBossLevel(level) {
+    return level === 5 || level === 10;
+  }
+
+  function spawnBoss(world, level) {
+    if (bossSpawned) return;
+    
+    const canvas = world.canvas;
+    const bossY = canvas.height / 2;
+    const spawnX = canvas.width + 100; // Spawn off-screen right
+    
+    let boss;
+    
+    if (level === 5) {
+      boss = createBioMechanicalOvermind(spawnX, bossY);
+      console.log('[LEVEL PROGRESSION] Bio-Mechanical Overmind boss spawned!');
+    } else if (level === 10) {
+      boss = createSentinelPrime(spawnX, bossY);
+      console.log('[LEVEL PROGRESSION] Sentinel Prime final boss spawned!');
+    }
+    
+    if (boss) {
+      addEntity(world, boss);
+      bossSpawned = true;
+      bossDefeated = false;
+    }
   }
 
 
@@ -140,6 +172,8 @@ export function createLevelProgressionSystem() {
     levelCompleteTriggered = false;
     isProcessingLevelComplete = false;
     isGameOver = false;
+    bossSpawned = false;
+    bossDefeated = false;
 
     console.log(`[LEVEL PROGRESSION] Starting level ${currentLevel}, travel target ${Math.round(travelTarget)}s`);
 
@@ -216,8 +250,28 @@ export function createLevelProgressionSystem() {
         hudProgress.textContent = `${pct}%`;
       }
 
+      // Boss spawning logic - spawn boss at 80% progress for boss levels
+      if (isBossLevel(currentLevel) && !bossSpawned && travelProgress >= (travelTarget * 0.8)) {
+        console.log(`[LEVEL PROGRESSION] Spawning boss for level ${currentLevel} at 80% progress`);
+        spawnBoss(world, currentLevel);
+      }
+
+      // Check if boss is defeated (for boss levels)
+      if (isBossLevel(currentLevel) && bossSpawned && !bossDefeated) {
+        const bossAlive = Array.from(world.entities.values())
+          .some(e => e.tags && e.tags.includes('boss'));
+        
+        if (!bossAlive) {
+          bossDefeated = true;
+          console.log(`[LEVEL PROGRESSION] Boss defeated on level ${currentLevel}!`);
+        }
+      }
+
       // On completion, pause spawns and transition
-      if (travelProgress >= travelTarget && !levelCompleteTriggered) {
+      // For boss levels, require boss to be defeated before completing
+      const canComplete = !isBossLevel(currentLevel) || (bossSpawned && bossDefeated);
+      
+      if (travelProgress >= travelTarget && !levelCompleteTriggered && canComplete) {
         levelCompleteTriggered = true;
 
         // Screen-clearing blast: remove all enemies and enemy bullets with explosion effects
@@ -237,11 +291,12 @@ export function createLevelProgressionSystem() {
         ];
         blastPoints.forEach(p => spawnExplosion(world, p.x, p.y, p.s, bus));
 
-        // Clear all enemies and enemy bullets
+        // Clear all enemies and enemy bullets (but preserve bosses)
         const toRemove = [];
         for (const e of world.entities.values()) {
           const tags = e.tags || [];
-          if (tags.includes('enemy') || tags.includes('enemy-bullet')) {
+          // Remove enemies and enemy bullets, but NOT bosses
+          if ((tags.includes('enemy') || tags.includes('enemy-bullet')) && !tags.includes('boss')) {
             toRemove.push(e.id);
           }
         }
@@ -275,6 +330,37 @@ export function createLevelProgressionSystem() {
       levelCompleteTriggered = false;
       isProcessingLevelComplete = false;
       isGameOver = false;
+      bossSpawned = false;
+      bossDefeated = false;
+    },
+
+    // Debug functions for testing
+    forceCompleteLevel(bus, world) {
+      if (isBossLevel(currentLevel) && !bossSpawned) {
+        // For boss levels, spawn boss immediately
+        spawnBoss(world, currentLevel);
+        console.log(`[DEBUG] Force spawned boss for level ${currentLevel}`);
+      } else {
+        // For regular levels or when boss is already spawned, complete normally
+        travelProgress = travelTarget;
+        console.log(`[DEBUG] Force completed level ${currentLevel}`);
+      }
+    },
+
+    skipToBoss(world) {
+      if (isBossLevel(currentLevel) && !bossSpawned) {
+        spawnBoss(world, currentLevel);
+        console.log(`[DEBUG] Skip to boss for level ${currentLevel}`);
+      }
+    },
+
+    // Getter methods for debug system compatibility
+    getEnemiesKilled() {
+      return Math.round(travelProgress);
+    },
+
+    getEnemiesPerLevel() {
+      return Math.round(travelTarget);
     }
   };
 }

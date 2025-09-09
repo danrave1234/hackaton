@@ -33,7 +33,7 @@ export class DebugSystem {
     // Set up keyboard shortcuts
     this.setupKeyboardShortcuts();
     
-    console.log('[DEBUG] Debug System initialized - Press F9 to skip to level end, F8 to toggle upgrade panel');
+    console.log('[DEBUG] Debug System initialized - F9: Skip Level | F8: Upgrades | F7: Skip to Boss | F10: Next Part');
   }
 
   createUpgradeDebugPanel() {
@@ -182,10 +182,32 @@ export class DebugSystem {
   updateVisualIndicator() {
     if (!this.visualIndicator || !this.enabled) return;
     
-    const progress = Math.min(100, (this.enemiesKilled / this.enemiesNeededForNextLevel) * 100);
+    // Get current level info from level progression system
+    const levelInfo = window.levelProgressionSystem ? {
+      killed: window.levelProgressionSystem.getEnemiesKilled(),
+      needed: window.levelProgressionSystem.getEnemiesPerLevel(),
+      level: window.levelProgressionSystem.getCurrentLevel()
+    } : {
+      killed: this.enemiesKilled,
+      needed: this.enemiesNeededForNextLevel,
+      level: this.currentLevel
+    };
+    
+    // Check if this is a boss level
+    let isBossLevel = false;
+    let bossStatus = '';
+    
+    // Check current level directly (levels 5 and 10 are boss levels)
+    const currentLevel = levelInfo.level;
+    if (currentLevel === 5 || currentLevel === 10) {
+      isBossLevel = true;
+      bossStatus = currentLevel === 10 ? ' [FINAL BOSS]' : ' [BOSS LEVEL]';
+    }
+    
+    const progress = Math.min(100, (levelInfo.killed / levelInfo.needed) * 100);
     this.visualIndicator.innerHTML = `
-      [DEBUG] Level ${this.currentLevel} - ${this.levelParts[this.currentPart]} (${progress.toFixed(0)}%)
-      <br><small>Enemies: ${this.enemiesKilled}/${this.enemiesNeededForNextLevel} | F9: Skip to End | F10: Next Part</small>
+      [DEBUG] Level ${levelInfo.level}${bossStatus} - ${this.levelParts[this.currentPart]} (${progress.toFixed(0)}%)
+      <br><small>Enemies: ${levelInfo.killed}/${levelInfo.needed} | F9: Skip${isBossLevel ? ' to Boss' : ' to End'} | F10: Next Part</small>
     `;
   }
 
@@ -205,6 +227,9 @@ export class DebugSystem {
           this.upgradeDebugPanel.style.display = 
             this.upgradeDebugPanel.style.display === 'none' ? 'block' : 'none';
         }
+      } else if (e.key === 'F7') {
+        e.preventDefault();
+        this.skipToBoss();
       }
     });
   }
@@ -217,10 +242,12 @@ export class DebugSystem {
     this.skipToEndRequested = true;
     this.updateVisualIndicator();
     
-    // Trigger level completion after a short delay
-    setTimeout(() => {
-      this.completeLevel();
-    }, 1000);
+    // Use the level progression system's forceCompleteLevel function
+    if (window.levelProgressionSystem && window.gameWorld && window.gameBus) {
+      window.levelProgressionSystem.forceCompleteLevel(window.gameBus, window.gameWorld);
+    } else {
+      console.warn('[DEBUG] Level progression system not available for skip');
+    }
   }
 
   nextPart() {
@@ -232,24 +259,28 @@ export class DebugSystem {
       this.updateVisualIndicator();
     }
   }
+  
+  skipToBoss() {
+    if (!this.enabled) return;
+    
+    console.log('[DEBUG] Skipping to boss fight');
+    
+    // Use the level progression system's skipToBoss function
+    if (window.levelProgressionSystem && window.gameWorld) {
+      window.levelProgressionSystem.skipToBoss(window.gameWorld);
+    } else {
+      console.warn('[DEBUG] Level progression system not available for boss skip');
+    }
+  }
 
   completeLevel() {
     if (!this.enabled) return;
     
     console.log(`[DEBUG] Level ${this.currentLevel} completed`);
     
-    // Navigate to next level
-    const nextLevel = this.currentLevel + 1;
-    const currentUrl = new URL(window.location.href);
-    currentUrl.searchParams.set('round', nextLevel.toString());
-    
-    // Show completion message
-    this.showCompletionMessage(nextLevel);
-    
-    // Navigate after delay
-    setTimeout(() => {
-      window.location.href = currentUrl.toString();
-    }, 2000);
+    // Don't auto-navigate - let the level progression system handle it
+    // This allows the card selection to show properly
+    console.log('[DEBUG] Level completion handled by level progression system');
   }
 
   showCompletionMessage(nextLevel) {
@@ -295,11 +326,7 @@ export class DebugSystem {
     console.log(`[DEBUG] Enemy killed! Progress: ${this.enemiesKilled}/${this.enemiesNeededForNextLevel}`);
     this.updateVisualIndicator();
     
-    // Check if level should be completed
-    if (this.enemiesKilled >= this.enemiesNeededForNextLevel) {
-      console.log(`[DEBUG] Level ${this.currentLevel} target reached! Completing level...`);
-      this.completeLevel();
-    }
+    // Don't auto-complete - let the level progression system handle boss logic
   }
 
   // System update function called by game loop
@@ -321,7 +348,7 @@ export class DebugSystem {
       
       // Subscribe to enemy kill events
       if (bus && typeof bus.on === 'function') {
-        bus.on('enemy:killed', () => this.onEnemyKilled());
+        bus.on('enemy:died', () => this.onEnemyKilled());
       }
     }
     
