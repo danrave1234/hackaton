@@ -7,6 +7,27 @@ html, body {
   overflow-x: hidden;
 }
 
+/* === Menu Active Bar Enhancement === */
+.chimera-menu { position:relative; }
+#menuActiveBar { position:absolute; left:0; top:0; width:3px; height:40px; background:linear-gradient(180deg,#06b6d4,#3b82f6); border-radius:2px; box-shadow:0 0 6px #06b6d4,0 0 14px -4px #3b82f6; opacity:0; transition:top .3s cubic-bezier(.4,.2,.1,1),height .3s,opacity .3s; pointer-events:none; }
+.chimera-menu:has(.item.selected) #menuActiveBar { opacity:1; }
+
+/* === Credits Modal (Name-only cards) === */
+.credits-shell { position:relative; }
+.credits-noise-layer { position:absolute; inset:0; pointer-events:none; background-image:radial-gradient(circle, rgba(255,255,255,0.15) 1px, transparent 1px); background-size:3px 3px; mix-blend-mode:overlay; opacity:.15; animation:noiseShift .45s steps(2) infinite; z-index:2; }
+@keyframes noiseShift { 0%{transform:translate(0,0);} 50%{transform:translate(-1px,1px);} 100%{transform:translate(0,0);} }
+.credits-divider { height:2px; width:100%; background:linear-gradient(90deg,transparent,#0ea5e9,#6366f1,#0ea5e9,transparent); box-shadow:0 0 12px -2px #0891b2; opacity:.55; margin-top:18px; }
+.credits-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:18px; }
+.credit-card { position:relative; display:flex; gap:14px; align-items:center; padding:14px 16px 16px 14px; text-decoration:none; background:linear-gradient(135deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02)); border:1px solid rgba(148,163,184,0.22); border-radius:18px; overflow:hidden; color:#e2e8f0; transition:all .3s cubic-bezier(.4,.2,.1,1); backdrop-filter:blur(6px); isolation:isolate; }
+.credit-card:before { content:""; position:absolute; inset:0; background:radial-gradient(circle at 85% 15%,rgba(14,165,233,0.18),transparent 65%); opacity:0; transition:opacity .4s; }
+.credit-card:hover { transform:translateY(-5px) scale(1.018); box-shadow:0 10px 26px -8px rgba(14,165,233,0.35),0 4px 10px -3px rgba(0,0,0,0.6); border-color:rgba(56,189,248,0.55); }
+.credit-card:hover:before { opacity:.85; }
+.credit-card .avatar { flex:none; width:42px; height:42px; border-radius:14px; background:linear-gradient(145deg,#0ea5e9,#6366f1); display:flex; align-items:center; justify-content:center; font-weight:600; letter-spacing:.05em; font-size:13px; box-shadow:0 4px 14px -4px #0ea5e9,0 0 0 1px rgba(255,255,255,0.15) inset; color:#fff; }
+.credit-card .name-only { font-weight:600; font-size:15px; letter-spacing:.02em; line-height:1.25; }
+.credit-card .gh { position:absolute; top:8px; right:10px; color:#334155; transition:color .35s, transform .35s, opacity .35s; opacity:.55; }
+.credit-card:hover .gh { color:#38bdf8; transform:scale(1.08); opacity:1; }
+@media (max-width:640px){ .credits-grid { grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:14px;} .credit-card { padding:12px 12px 14px 12px;} .credit-card .avatar { width:36px; height:36px; font-size:11px;} .credit-card .name-only { font-size:14px;} }
+
 /* Round slide-in banner (game page) */
 .round-banner {
   position: absolute;
