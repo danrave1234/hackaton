@@ -1,5 +1,6 @@
 // Internal cache for spritesheet and meta
 let playerSpriteCache = null;
+let bulletSpriteCache = null;
 
 function resolveSpriteSrc(raw) {
   if (!raw) return undefined;
@@ -34,6 +35,24 @@ function ensurePlayerSprite(canvas) {
   return playerSpriteCache;
 }
 
+function ensureBulletSprite(canvas) {
+  const src = resolveSpriteSrc(canvas?.dataset?.bulletSprite);
+  if (!src) return null;
+  
+  // Force refresh if cache exists but source changed
+  if (bulletSpriteCache && bulletSpriteCache.src !== src) {
+    bulletSpriteCache = null;
+  }
+  
+  if (bulletSpriteCache && bulletSpriteCache.img) return bulletSpriteCache;
+  
+  const img = new Image();
+  img.src = src;
+  // Simple PNG - no sprite animation, just a single image
+  bulletSpriteCache = { img, src };
+  return bulletSpriteCache;
+}
+
 export function RenderSystem(dt, world) {
   const { ctx, canvas } = world;
   // Background
@@ -61,12 +80,13 @@ export function RenderSystem(dt, world) {
     const frame = Math.floor(playerSheet.t * playerSheet.fps) % playerSheet.anim.length;
     playerSheet.idx = playerSheet.anim[frame];
   }
+  const bulletSprite = ensureBulletSprite(canvas);
 
   // Draw entities
   for (const e of world.entities.values()) {
     if ((e.tags||[]).includes('player')) {
-      const sizeW = e.size?.w || 96;
-      const sizeH = e.size?.h || 48;
+      const sizeW = e.size?.w || 120;
+      const sizeH = e.size?.h || 60;
       const img = playerSheet?.img;
       if (img && img.complete && img.naturalWidth > 0 && playerSheet) {
         const colW = Math.floor(img.naturalWidth / Math.max(1, playerSheet.cols));
@@ -97,8 +117,21 @@ export function RenderSystem(dt, world) {
         ctx.restore();
       }
     } else if ((e.tags||[]).includes('bullet')) {
-      ctx.fillStyle = '#93c5fd';
-      ctx.fillRect(e.pos.x, e.pos.y - e.rect.h / 2, e.rect.w, e.rect.h);
+      const img = bulletSprite?.img;
+      const bw = e.rect?.w || 4;
+      const bh = e.rect?.h || 1;
+      if (img && img.complete && img.naturalWidth > 0) {
+        // Render PNG at a slightly larger fixed size
+        const fixedW = 12;  // Slightly bigger width
+        const fixedH = 4;   // Slightly bigger height
+        ctx.drawImage(img, e.pos.x, e.pos.y - fixedH / 2, fixedW, fixedH);
+        if (window.DEBUG_BULLETS) console.log('Bullet rendered as PNG:', fixedW, 'x', fixedH);
+      } else {
+        // Fallback rectangle
+        ctx.fillStyle = '#93c5fd';
+        ctx.fillRect(e.pos.x, e.pos.y - bh / 2, bw, bh);
+        if (window.DEBUG_BULLETS) console.log('Bullet rendered as rect:', bw, 'x', bh);
+      }
     } else if ((e.tags||[]).includes('enemy')) {
       ctx.fillStyle = e.color || '#fca5a5';
       ctx.beginPath();

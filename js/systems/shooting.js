@@ -23,8 +23,8 @@ export function ShootingSystem(dt, world, bus) {
     // Can shoot when timer expires
     if (e.lastShot <= 0) {
       e.lastShot = weapon.rate;
-      const x = e.pos.x + (e.size?.w || 36) / 2;
-      const y = e.pos.y;
+    const x = e.pos.x + (e.size?.w || 36) * 0.35; // Closer to ship origin (20% from center)
+    const y = e.pos.y;
       addEntity(world, createBullet(x, y, weapon.speed, 0, weapon.w, weapon.h));
       
       // Always emit sound when bullet is created

@@ -74,11 +74,16 @@ export function createSfxSystem(canvas) {
   }
 
   function playLaser() {
+    // If audio context is suspended, try to resume but don't queue sounds
+    if (ctx && ctx.state === 'suspended') {
+      ctx.resume().catch(() => {}); // Just try to resume, don't queue the sound
+      // Fall through to HTMLAudio fallback instead of queueing
+    }
+    
     // Try Web Audio first
     let played = false;
-    if (ctx && laserBuffer && laserGain) {
+    if (ctx && laserBuffer && laserGain && ctx.state === 'running') {
       try {
-        if (ctx.state === 'suspended') ctx.resume();
         const src = ctx.createBufferSource();
         src.buffer = laserBuffer;
         src.connect(laserGain);
@@ -112,13 +117,18 @@ export function createSfxSystem(canvas) {
   }
   
   function playExplosion() {
+    // If audio context is suspended, try to resume but don't queue sounds
+    if (ctx && ctx.state === 'suspended') {
+      ctx.resume().catch(() => {}); // Just try to resume, don't queue the sound
+      // Fall through to HTMLAudio fallback instead of queueing
+    }
+    
     // Try Web Audio first, fallback to HTMLAudio only if needed
     let played = false;
     
-    // First try Web Audio if available
-    if (ctx && explosionBuffer && explosionGain) {
+    // First try Web Audio if available and running
+    if (ctx && explosionBuffer && explosionGain && ctx.state === 'running') {
       try {
-        if (ctx.state === 'suspended') ctx.resume();
         const src = ctx.createBufferSource();
         src.buffer = explosionBuffer;
         src.connect(explosionGain);
@@ -204,8 +214,11 @@ export function createSfxSystem(canvas) {
     if (attached) return;
     attached = true;
     
+    if (window.DEBUG_SFX) console.log('[SFX] Attaching event listeners to bus');
+    
     // Simple immediate playback for consistent audio
     bus.on('sfx:laser', () => {
+      if (window.DEBUG_SFX) console.log('[SFX] Laser event received');
       playLaser();
     });
     
@@ -218,23 +231,44 @@ export function createSfxSystem(canvas) {
       playExplosion();
     });
     
-    const once = () => { 
-      document.removeEventListener('pointerdown', once); 
-      document.removeEventListener('keydown', once); 
-      document.removeEventListener('touchstart', once); 
+    // Try to unlock audio immediately on any user interaction
+    const unlockOnce = () => { 
+      document.removeEventListener('pointerdown', unlockOnce); 
+      document.removeEventListener('keydown', unlockOnce); 
+      document.removeEventListener('touchstart', unlockOnce);
+      document.removeEventListener('click', unlockOnce);
       tryUnlockAudio(); 
     };
-    document.addEventListener('pointerdown', once, { once: true });
-    document.addEventListener('keydown', once, { once: true });
-    document.addEventListener('touchstart', once, { once: true });
+    document.addEventListener('pointerdown', unlockOnce, { once: true });
+    document.addEventListener('keydown', unlockOnce, { once: true });
+    document.addEventListener('touchstart', unlockOnce, { once: true });
+    document.addEventListener('click', unlockOnce, { once: true });
     
-    // Start buffer loading opportunistically
+    // Also try to unlock when the page becomes visible (in case user switched tabs)
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && ctx && ctx.state === 'suspended') {
+        tryUnlockAudio();
+      }
+    });
+    
+    // Start buffer loading and try initial unlock immediately
     loadBuffers();
+    
+    // Try to unlock immediately if possible (some browsers allow it)
+    setTimeout(() => {
+      if (!unlocked) {
+        tryUnlockAudio();
+      }
+    }, 100);
   }
 
   return {
     system(dt, world, bus) {
-      attach(bus);
+      // Only attach once, then do nothing
+      if (!attached) {
+        attach(bus);
+      }
+      // No need to do anything else in subsequent frames
     }
   };
 }
