@@ -75,6 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ShootingSystem,
     MovementSystem,
     CollisionSystem,
+    sfx.system,
     CleanupSystem,
     RenderSystem,
     score.system,
@@ -83,5 +84,4 @@ document.addEventListener('DOMContentLoaded', () => {
     DebugSystemFunction,
   ], world, bus);
 });
-
 
