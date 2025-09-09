@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const startBtn = $('#startBtn');
   const leaderboardBtn = $('#leaderboardBtn');
+  const creditsBtn = $('#creditsBtn');
   const toast = $('#toast');
   const openButtons = $$('button[data-open]');
   const modals = {
@@ -90,6 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Menu selection helpers
   const menuItems = $$('#menu .item');
+  const activeBar = document.getElementById('menuActiveBar');
   let selectedIndex = Math.max(0, menuItems.findIndex((el) => el.classList.contains('selected')));
   function updateSelection(newIndex) {
     if (!menuItems.length) return;
@@ -105,6 +107,14 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
     selectedIndex = newIndex;
+    if (activeBar) {
+      const target = menuItems[selectedIndex];
+      const parentRect = target.parentElement.getBoundingClientRect();
+      const rect = target.getBoundingClientRect();
+      activeBar.style.top = (rect.top - parentRect.top) + 'px';
+      activeBar.style.height = rect.height + 'px';
+      activeBar.style.opacity = '1';
+    }
   }
 
   window.addEventListener('keydown', (e) => {
@@ -151,11 +161,24 @@ document.addEventListener('DOMContentLoaded', () => {
       window.location.href = 'pages/leaderboard.html';
     });
   }
+  if (creditsBtn) {
+    creditsBtn.addEventListener('click', () => {
+      const modal = modals.credits;
+      if (modal) {
+        modal.classList.remove('tw-hidden');
+        modal.classList.add('tw-flex');
+      }
+    });
+  }
 
   // Hover updates selection (mouse users)
   menuItems.forEach((el, i) => {
     el.addEventListener('mouseenter', () => {
       if (!el.classList.contains('disabled')) updateSelection(i);
     });
+    el.addEventListener('click', () => updateSelection(i));
   });
+
+  // Initial position after layout
+  window.requestAnimationFrame(() => updateSelection(selectedIndex));
 });
