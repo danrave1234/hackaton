@@ -4,13 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Simple Blank Project</title>
-  <!-- Tailwind CSS via CDN with a tw- prefix configured safely before load -->
-  <script>
-    window.tailwind = {
-      config: { prefix: 'tw-' }
-    };
-  </script>
+  <!-- Tailwind CSS via CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Configure Tailwind (CDN) with a tw- prefix AFTER the CDN is loaded -->
+  <script>
+    tailwind.config = { prefix: 'tw-' };
+  </script>
   <link rel="stylesheet" href="style/styles.css" />
 </head>
 <body>
