@@ -1,7 +1,8 @@
 // Internal cache for spritesheet and meta
 let playerSpriteCache = null;
 let bulletSpriteCache = null;
-let sectorBackgroundCache = new Map(); // Cache for sector backgrounds
+let sectorBackgroundCache = new Map(); // Cache for sector backgrounds (keyed by src)
+let enemySpriteCache = new Map(); // Cache for enemy sprites by resolved src
 
 // Import explosion rendering
 import { renderExplosions } from './explosion.js';
@@ -17,6 +18,17 @@ function resolveSpriteSrc(raw) {
     if (inPages) out = '../' + out;
   }
   return out;
+}
+
+function ensureEnemySprite(spriteRef) {
+  const src = resolveSpriteSrc(spriteRef);
+  if (!src) return null;
+  if (enemySpriteCache.has(src)) return enemySpriteCache.get(src);
+  const img = new Image();
+  img.src = src;
+  const data = { img, src };
+  enemySpriteCache.set(src, data);
+  return data;
 }
 
 function ensurePlayerSprite(canvas) {
@@ -129,16 +141,23 @@ function renderEnemy(ctx, enemy, time) {
 
 function renderHunterSeeker(ctx, enemy, time) {
   const behavior = enemy.behavior || {};
+  const sheet = enemy.sprite ? ensureEnemySprite(enemy.sprite) : null;
+  const hasImg = sheet && sheet.img && sheet.img.complete && sheet.img.naturalWidth > 0;
   
-  // Arrow-head shaped drone
-  ctx.fillStyle = enemy.color;
-  ctx.beginPath();
-  ctx.moveTo(enemy.radius, 0); // Point
-  ctx.lineTo(-enemy.radius * 0.6, -enemy.radius * 0.4);
-  ctx.lineTo(-enemy.radius * 0.3, 0);
-  ctx.lineTo(-enemy.radius * 0.6, enemy.radius * 0.4);
-  ctx.closePath();
-  ctx.fill();
+  if (hasImg) {
+    const size = enemy.radius * 2.0;
+    ctx.drawImage(sheet.img, -size/2, -size/2, size, size);
+  } else {
+    // Arrow-head shaped drone
+    ctx.fillStyle = enemy.color;
+    ctx.beginPath();
+    ctx.moveTo(enemy.radius, 0); // Point
+    ctx.lineTo(-enemy.radius * 0.6, -enemy.radius * 0.4);
+    ctx.lineTo(-enemy.radius * 0.3, 0);
+    ctx.lineTo(-enemy.radius * 0.6, enemy.radius * 0.4);
+    ctx.closePath();
+    ctx.fill();
+  }
   
   // Red optical sensor
   ctx.fillStyle = behavior.phase === 'lock-on' ? '#ff0000' : '#ffaa00';
@@ -161,30 +180,53 @@ function renderHunterSeeker(ctx, enemy, time) {
 
 function renderGeoLancer(ctx, enemy, time) {
   const behavior = enemy.behavior || {};
+  const sheet = enemy.sprite ? ensureEnemySprite(enemy.sprite) : null;
+  const hasImg = sheet && sheet.img && sheet.img.complete && sheet.img.naturalWidth > 0;
+  const gridStr = enemy.spriteGrid || '1x1';
+  const m = /^(\d+)x(\d+)$/i.exec(gridStr.trim());
+  const cols = m ? parseInt(m[1], 10) : 1;
+  const rows = m ? parseInt(m[2], 10) : 1;
+  const idx = Math.max(0, enemy.spriteIndex || 0);
+  const colW = hasImg ? Math.floor(sheet.img.naturalWidth / Math.max(1, cols)) : 0;
+  const rowH = hasImg ? Math.floor(sheet.img.naturalHeight / Math.max(1, rows)) : 0;
+  const cx = cols > 0 ? (idx % cols) : 0;
+  const cy = rows > 0 ? Math.floor(idx / cols) % rows : 0;
+  const sx = cx * colW;
+  const sy = cy * rowH;
   
   if (enemy.disguised || !behavior.active) {
-    // Render as asteroid
-    ctx.fillStyle = enemy.color;
-    // Draw irregular asteroid shape
-    ctx.beginPath();
-    const points = 8;
-    for (let i = 0; i < points; i++) {
-      const angle = (i / points) * Math.PI * 2;
-      const variation = 0.7 + Math.sin(time * 0.5 + i) * 0.3;
-      const radius = enemy.radius * variation;
-      const x = Math.cos(angle) * radius;
-      const y = Math.sin(angle) * radius;
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
+    // Render as asteroid or disguised sprite
+    if (hasImg) {
+      const size = enemy.radius * 2;
+      ctx.drawImage(sheet.img, sx, sy, colW, rowH, -size/2, -size/2, size, size);
+    } else {
+      ctx.fillStyle = enemy.color;
+      // Draw irregular asteroid shape
+      ctx.beginPath();
+      const points = 8;
+      for (let i = 0; i < points; i++) {
+        const angle = (i / points) * Math.PI * 2;
+        const variation = 0.7 + Math.sin(time * 0.5 + i) * 0.3;
+        const radius = enemy.radius * variation;
+        const x = Math.cos(angle) * radius;
+        const y = Math.sin(angle) * radius;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fill();
     }
-    ctx.closePath();
-    ctx.fill();
   } else {
     // Activated state - show weapon
-    ctx.fillStyle = enemy.color;
-    ctx.beginPath();
-    ctx.arc(0, 0, enemy.radius, 0, Math.PI * 2);
-    ctx.fill();
+    if (hasImg) {
+      const size = enemy.radius * 2;
+      ctx.drawImage(sheet.img, sx, sy, colW, rowH, -size/2, -size/2, size, size);
+    } else {
+      ctx.fillStyle = enemy.color;
+      ctx.beginPath();
+      ctx.arc(0, 0, enemy.radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
     
     // Weapon barrel
     ctx.fillStyle = '#ff6600';
@@ -203,33 +245,32 @@ function renderGeoLancer(ctx, enemy, time) {
 }
 
 function renderFabricator(ctx, enemy, time) {
-  // Large, boxy design
-  ctx.fillStyle = enemy.color;
-  
-  // Main body
+  const sheet = enemy.sprite ? ensureEnemySprite(enemy.sprite) : null;
+  const hasImg = sheet && sheet.img && sheet.img.complete && sheet.img.naturalWidth > 0;
   const size = enemy.radius;
-  ctx.fillRect(-size, -size * 0.6, size * 2, size * 1.2);
-  
-  // Assembly ports (glowing when spawning)
-  const spawning = enemy.behavior && enemy.behavior.spawnTimer > enemy.behavior.spawnCycle - 0.5;
-  ctx.fillStyle = spawning ? '#00ff00' : '#444444';
-  
-  // Left assembly port
-  ctx.fillRect(-size * 1.2, -size * 0.3, size * 0.4, size * 0.6);
-  // Right assembly port  
-  ctx.fillRect(size * 0.8, -size * 0.3, size * 0.4, size * 0.6);
-  
-  // Central "eye"
-  ctx.fillStyle = '#ff0000';
-  ctx.beginPath();
-  ctx.arc(0, 0, size * 0.3, 0, Math.PI * 2);
-  ctx.fill();
-  
-  // Twin cannons
-  ctx.fillStyle = '#888888';
-  ctx.fillRect(size * 0.3, -size * 0.8, size * 0.4, size * 0.3);
-  ctx.fillRect(size * 0.3, size * 0.5, size * 0.4, size * 0.3);
-  
+  if (hasImg) {
+    const w = size * 2.2;
+    const h = size * 1.6;
+    ctx.drawImage(sheet.img, -w/2, -h/2, w, h);
+  } else {
+    // Large, boxy design fallback
+    ctx.fillStyle = enemy.color;
+    ctx.fillRect(-size, -size * 0.6, size * 2, size * 1.2);
+    // Assembly ports (glowing when spawning)
+    const spawning = enemy.behavior && enemy.behavior.spawnTimer > enemy.behavior.spawnCycle - 0.5;
+    ctx.fillStyle = spawning ? '#00ff00' : '#444444';
+    ctx.fillRect(-size * 1.2, -size * 0.3, size * 0.4, size * 0.6);
+    ctx.fillRect(size * 0.8, -size * 0.3, size * 0.4, size * 0.6);
+    // Central eye
+    ctx.fillStyle = '#ff0000';
+    ctx.beginPath();
+    ctx.arc(0, 0, size * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    // Twin cannons
+    ctx.fillStyle = '#888888';
+    ctx.fillRect(size * 0.3, -size * 0.8, size * 0.4, size * 0.3);
+    ctx.fillRect(size * 0.3, size * 0.5, size * 0.4, size * 0.3);
+  }
   // Health indicator bars
   if (enemy.health) {
     ctx.fillStyle = enemy.health > 4 ? '#00ff00' : enemy.health > 2 ? '#ffff00' : '#ff0000';
@@ -240,79 +281,123 @@ function renderFabricator(ctx, enemy, time) {
 
 function renderAsteroid(ctx, enemy, time) {
   const behavior = enemy.behavior || {};
+  const sheet = enemy.sprite ? ensureEnemySprite(enemy.sprite) : null;
+  const hasImg = sheet && sheet.img && sheet.img.complete && sheet.img.naturalWidth > 0;
   
   // Rotate the asteroid
   ctx.rotate(behavior.rotation || 0);
   
-  ctx.fillStyle = enemy.color;
-  
-  // Irregular asteroid shape based on size
-  ctx.beginPath();
-  const points = enemy.size === 'large' ? 12 : enemy.size === 'small' ? 6 : 8;
-  for (let i = 0; i < points; i++) {
-    const angle = (i / points) * Math.PI * 2;
-    const variation = 0.6 + Math.sin(time * 0.2 + i) * 0.4;
-    const radius = enemy.radius * variation;
-    const x = Math.cos(angle) * radius;
-    const y = Math.sin(angle) * radius;
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  }
-  ctx.closePath();
-  ctx.fill();
-  
-  // Surface details
-  ctx.fillStyle = '#666666';
-  for (let i = 0; i < 3; i++) {
-    const x = (Math.random() - 0.5) * enemy.radius;
-    const y = (Math.random() - 0.5) * enemy.radius;
-    const size = Math.random() * 3 + 1;
+  if (hasImg) {
+    const size = enemy.radius * 2;
+    ctx.drawImage(sheet.img, -size/2, -size/2, size, size);
+  } else {
+    ctx.fillStyle = enemy.color;
+    
+    // Irregular asteroid shape based on size
     ctx.beginPath();
-    ctx.arc(x, y, size, 0, Math.PI * 2);
+    const points = enemy.size === 'large' ? 12 : enemy.size === 'small' ? 6 : 8;
+    for (let i = 0; i < points; i++) {
+      const angle = (i / points) * Math.PI * 2;
+      const variation = 0.6 + Math.sin(time * 0.2 + i) * 0.4;
+      const radius = enemy.radius * variation;
+      const x = Math.cos(angle) * radius;
+      const y = Math.sin(angle) * radius;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
     ctx.fill();
+    
+    // Surface details
+    ctx.fillStyle = '#666666';
+    for (let i = 0; i < 3; i++) {
+      const x = (Math.random() - 0.5) * enemy.radius;
+      const y = (Math.random() - 0.5) * enemy.radius;
+      const size = Math.random() * 3 + 1;
+      ctx.beginPath();
+      ctx.arc(x, y, size, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 }
 
 function renderMinion(ctx, enemy, time) {
-  // Small, swarming enemy
-  ctx.fillStyle = enemy.color;
-  
-  // Main body - smaller than basic enemies
-  ctx.beginPath();
-  ctx.arc(0, 0, enemy.radius, 0, Math.PI * 2);
-  ctx.fill();
-  
-  // Erratic movement trail
-  ctx.strokeStyle = enemy.color;
-  ctx.lineWidth = 1;
-  ctx.globalAlpha = 0.3;
-  ctx.beginPath();
-  ctx.moveTo(-enemy.radius * 2, 0);
-  ctx.lineTo(-enemy.radius * 4, Math.sin(time * 5) * enemy.radius);
-  ctx.stroke();
-  ctx.globalAlpha = 1;
-  
-  // Blinking "angry" core
-  if (Math.floor(time * 8) % 2) {
-    ctx.fillStyle = '#ffffff';
+  const sheet = enemy.sprite ? ensureEnemySprite(enemy.sprite) : null;
+  const hasImg = sheet && sheet.img && sheet.img.complete && sheet.img.naturalWidth > 0;
+  if (hasImg) {
+    const size = enemy.radius * 2.2;
+    ctx.drawImage(sheet.img, -size/2, -size/2, size, size);
+  } else {
+    // Small, swarming enemy
+    ctx.fillStyle = enemy.color;
+    
+    // Main body - smaller than basic enemies
     ctx.beginPath();
-    ctx.arc(0, 0, enemy.radius * 0.4, 0, Math.PI * 2);
+    ctx.arc(0, 0, enemy.radius, 0, Math.PI * 2);
     ctx.fill();
+    
+    // Erratic movement trail
+    ctx.strokeStyle = enemy.color;
+    ctx.lineWidth = 1;
+    ctx.globalAlpha = 0.3;
+    ctx.beginPath();
+    ctx.moveTo(-enemy.radius * 2, 0);
+    ctx.lineTo(-enemy.radius * 4, Math.sin(time * 5) * enemy.radius);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    
+    // Blinking "angry" core
+    if (Math.floor(time * 8) % 2) {
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(0, 0, enemy.radius * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 }
 
 function renderBasicEnemy(ctx, enemy, time) {
-  // Standard circular enemy
-  ctx.fillStyle = enemy.color || '#fca5a5';
-  ctx.beginPath();
-  ctx.arc(0, 0, enemy.radius, 0, Math.PI * 2);
-  ctx.fill();
-  
-  // Simple visual detail
-  ctx.fillStyle = '#ffffff';
-  ctx.beginPath();
-  ctx.arc(enemy.radius * 0.3, -enemy.radius * 0.3, enemy.radius * 0.2, 0, Math.PI * 2);
-  ctx.fill();
+  const sheet = enemy.sprite ? ensureEnemySprite(enemy.sprite) : null;
+  const hasImg = sheet && sheet.img && sheet.img.complete && sheet.img.naturalWidth > 0;
+  if (hasImg) {
+    const gridStr = enemy.spriteGrid || '1x1';
+    const m = /^(\d+)x(\d+)$/i.exec(gridStr.trim());
+    const cols = m ? parseInt(m[1], 10) : 1;
+    const rows = m ? parseInt(m[2], 10) : 1;
+    const size = enemy.radius * 2;
+
+    // Advance animation
+    if (enemy.spriteAnim) {
+      enemy._animT = (enemy._animT || 0) + (1/60);
+      const fps = Math.max(1, parseInt(enemy.spriteFps || 8, 10));
+      const seq = String(enemy.spriteAnim).split(',').map(s => parseInt(s.trim(), 10)).filter(n => Number.isFinite(n));
+      if (seq.length > 0) {
+        const frame = Math.floor((enemy._animT * fps)) % seq.length;
+        enemy.spriteIndex = seq[frame];
+      }
+    }
+
+    const idx = Math.max(0, enemy.spriteIndex || 0);
+    const colW = Math.floor(sheet.img.naturalWidth / Math.max(1, cols));
+    const rowH = Math.floor(sheet.img.naturalHeight / Math.max(1, rows));
+    const cx = cols > 0 ? (idx % cols) : 0;
+    const cy = rows > 0 ? Math.floor(idx / cols) % rows : 0;
+    const sx = cx * colW;
+    const sy = cy * rowH;
+    ctx.drawImage(sheet.img, sx, sy, colW, rowH, -size/2, -size/2, size, size);
+  } else {
+    // Standard circular enemy fallback
+    ctx.fillStyle = enemy.color || '#fca5a5';
+    ctx.beginPath();
+    ctx.arc(0, 0, enemy.radius, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Simple visual detail
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(enemy.radius * 0.3, -enemy.radius * 0.3, enemy.radius * 0.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
 }
 
 function renderEnemyEffects(ctx, enemy, time) {
@@ -571,16 +656,20 @@ export function RenderSystem(dt, world) {
         const bw = e.rect?.w || 4;
         const bh = e.rect?.h || 1;
         
+        // Clamp drawing so bullets don't render past the canvas edge
+        const maxX = Math.min(e.pos.x, canvas.width - (img ? 12 : bw));
+        const drawX = Math.max(0, maxX);
+
         if (img && img.complete && img.naturalWidth > 0) {
           // Render PNG at a slightly larger fixed size
           const fixedW = 12;  // Slightly bigger width
           const fixedH = 4;   // Slightly bigger height
-          ctx.drawImage(img, e.pos.x, e.pos.y - fixedH / 2, fixedW, fixedH);
+          ctx.drawImage(img, drawX, e.pos.y - fixedH / 2, fixedW, fixedH);
           if (window.DEBUG_BULLETS) console.log('Bullet rendered as PNG:', fixedW, 'x', fixedH);
         } else {
           // Fallback rectangle
           ctx.fillStyle = '#93c5fd';
-          ctx.fillRect(e.pos.x, e.pos.y - bh / 2, bw, bh);
+          ctx.fillRect(drawX, e.pos.y - bh / 2, bw, bh);
           if (window.DEBUG_BULLETS) console.log('Bullet rendered as rect:', bw, 'x', bh);
         }
       }

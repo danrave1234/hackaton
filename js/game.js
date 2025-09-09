@@ -11,11 +11,15 @@ import { CleanupSystem } from './systems/cleanup.js';
 import { SpawnSystem } from './systems/spawn.js';
 import { createScoreSystem } from './systems/score.js';
 import { createSfxSystem } from './systems/sfx.js';
+import { createMusicSystem } from './systems/music.js';
 import { createDebugSystem, DebugSystemFunction } from './systems/debug.js';
 import { createGameOverSystem } from './systems/gameOver.js';
 import { createLevelProgressionSystem } from './systems/levelProgression.js';
 import { SupportSystem } from './systems/support.js';
 import { ComboSystem } from './systems/combos.js';
+import { ExplosionSystem } from './systems/explosion.js';
+import { createHealthSystem } from './systems/health.js';
+import { EnemyAISystem, updateEnemyBullets } from './systems/enemyAI.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   const $ = (sel) => document.querySelector(sel);
@@ -69,8 +73,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // Enable SFX debugging to trace audio stacking issues (set to true if needed)
   window.DEBUG_SFX = false;
   const sfx = createSfxSystem(canvas);
+  const music = createMusicSystem(canvas);
   const gameOver = createGameOverSystem();
   const levelProgression = createLevelProgressionSystem();
+  const health = createHealthSystem();
+  window.healthSystem = health;
 
   // Initialize debug system (development only)
   window.debugSystem = createDebugSystem();
@@ -79,15 +86,19 @@ document.addEventListener('DOMContentLoaded', () => {
   createLoop([
     PlayerControlSystem,
     SpawnSystem,
+    EnemyAISystem,
     ShootingSystem,
     SupportSystem,
     ComboSystem,
     MovementSystem,
+    updateEnemyBullets,
     CollisionSystem,
     CleanupSystem,
+    ExplosionSystem,
     RenderSystem,
     score.system,
     sfx.system,
+    music.system,
     gameOver.system,
     levelProgression.system,
     DebugSystemFunction,

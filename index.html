@@ -11,6 +11,8 @@
     tailwind.config = { prefix: 'tw-' };
   </script>
   <link rel="stylesheet" href="style/styles.css" />
+  <link rel="preload" as="image" href="asset/background/main_background.png" />
+  <link rel="preload" as="audio" href="asset/music/menu_music.mp3" />
 </head>
 <body class="tw-min-h-screen tw-bg-gradient-to-b tw-from-slate-900 tw-to-slate-950 tw-text-slate-200 tw-antialiased">
   <!-- Landing + Main Menu (FNAF-style split) -->
@@ -45,6 +47,7 @@
       <img
         src="asset/background/main_background.png"
         alt="Space scene with spaceships and cosmic background"
+        loading="eager" fetchpriority="high" decoding="sync"
         class="tw-absolute tw-inset-0 tw-w-full tw-h-full tw-object-cover tw-object-center" />
       <!-- Dark transition from left edge -->
       <div class="tw-absolute tw-inset-0 tw-bg-gradient-to-r tw-from-slate-950 tw-via-slate-950/70 tw-to-transparent tw-w-1/4"></div>

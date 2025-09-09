@@ -1,22 +1,33 @@
 // Level Progression System - Manages level completion and progression
 import { cardSelectionScreen } from './cardSelection.js';
-import { markForRemoval, flushRemovals } from '../world/world.js';
+import { spawnExplosion } from './explosion.js';
+import { markForRemoval } from '../world/world.js';
 
 export function createLevelProgressionSystem() {
-  let enemiesKilled = 0;
-  let enemiesPerLevel = 10; // Start with 10 enemies per level
-  let currentLevel = 1;
+  // Travel-based progression
+  // Initialize from URL param `round` if present
+  const params = new URLSearchParams(location.search);
+  let currentLevel = Math.max(1, parseInt(params.get('round') || '1', 10) || 1);
+  let travelProgress = 0;        // seconds progressed in current sector
+  let travelTarget = 30;         // seconds required to complete sector
   let levelCompleteTriggered = false;
   let isProcessingLevelComplete = false;
-  
-  // Initialize sector-based enemy counts
+  let isGameOver = false;        // stop progression if player dies
+
+  function computeTravelTargetForLevel(level) {
+    // Scale duration modestly with sector (clamped)
+    const base = 28;          // base seconds
+    const increment = 2;      // add per level
+    const maxSeconds = 48;    // cap
+    return Math.min(maxSeconds, base + (level - 1) * increment);
+  }
+
+
+  // Initialize sector and travel target
   if (window.spawnSystem && window.spawnSystem.setSector) {
     window.spawnSystem.setSector(currentLevel);
-    const sectorConfig = window.spawnSystem.getSectorConfig();
-    if (sectorConfig) {
-      enemiesPerLevel = Object.values(sectorConfig.enemies).reduce((sum, count) => sum + count, 0);
-    }
   }
+  travelTarget = computeTravelTargetForLevel(currentLevel);
 
   function showLevelCompleteScreen(onContinue) {
     const levelCompleteElement = document.createElement('div');
@@ -74,21 +85,20 @@ export function createLevelProgressionSystem() {
     `;
     document.head.appendChild(style);
 
+    const percent = Math.min(100, Math.round((travelProgress / travelTarget) * 100));
+
     levelCompleteElement.innerHTML = `
       <div style="text-align: center; background: rgba(0,0,0,0.7); padding: 60px; border-radius: 20px; border: 3px solid #4CAF50;">
         <h1 style="font-size: 72px; margin: 0 0 20px 0; color: #4CAF50; text-shadow: 3px 3px 6px rgba(0,0,0,0.8);" class="pulse">
           LEVEL ${currentLevel} COMPLETE!
         </h1>
         <div style="font-size: 24px; margin: 20px 0; color: #FFC107;">
-          <p style="margin: 10px 0;">Enemies Defeated: ${enemiesKilled}</p>
-          <p style="margin: 10px 0;">Level Score: ${enemiesKilled * 100}</p>
+          <p style="margin: 10px 0;">Travel Progress: ${percent}%</p>
+          <p style="margin: 10px 0;">Sector Time: ${Math.round(travelTarget)}s</p>
         </div>
         <div style="margin: 30px 0; padding: 20px; background: rgba(76, 175, 80, 0.1); border-radius: 10px;">
           <p style="font-size: 18px; color: #8BC34A; margin: 0;">
-            ⭐ Excellent work, Captain! ⭐
-          </p>
-          <p style="font-size: 16px; color: #ccc; margin: 10px 0 0 0;">
-            Preparing upgrades for next sector...
+            ⭐ Route secured. Preparing upgrades for next sector... ⭐
           </p>
         </div>
         <div style="margin-top: 40px;">
@@ -107,13 +117,10 @@ export function createLevelProgressionSystem() {
     const countdownInterval = setInterval(() => {
       countdown--;
       if (countdownEl) countdownEl.textContent = countdown;
-      
       if (countdown <= 0) {
         clearInterval(countdownInterval);
-        
         // Fade out level complete screen
         levelCompleteElement.style.animation = 'levelCompleteOut 0.5s ease-in forwards';
-        
         setTimeout(() => {
           if (levelCompleteElement.parentNode) {
             levelCompleteElement.parentNode.removeChild(levelCompleteElement);
@@ -123,114 +130,135 @@ export function createLevelProgressionSystem() {
       }
     }, 1000);
 
-    console.log(`[LEVEL PROGRESSION] Level ${currentLevel} complete! Enemies killed: ${enemiesKilled}`);
+    console.log(`[LEVEL PROGRESSION] Level ${currentLevel} complete by travel.`);
   }
 
-  function proceedToNextLevel() {
+  function proceedToNextLevel(world) {
     currentLevel++;
-    enemiesKilled = 0;
-    
-    // Update enemies per level based on spawn system configuration
-    if (window.spawnSystem && window.spawnSystem.getSectorConfig) {
-      const sectorConfig = window.spawnSystem.getSectorConfig();
-      enemiesPerLevel = Object.values(sectorConfig.enemies).reduce((sum, count) => sum + count, 0);
-    } else {
-      enemiesPerLevel = Math.min(20, 10 + currentLevel * 2); // Fallback
-    }
-    
+    travelProgress = 0;
+    travelTarget = computeTravelTargetForLevel(currentLevel);
     levelCompleteTriggered = false;
     isProcessingLevelComplete = false;
+    isGameOver = false;
 
-    console.log(`[LEVEL PROGRESSION] Starting level ${currentLevel}, need to kill ${enemiesPerLevel} enemies`);
+    console.log(`[LEVEL PROGRESSION] Starting level ${currentLevel}, travel target ${Math.round(travelTarget)}s`);
 
     // Update URL to reflect new level
     const url = new URL(window.location);
     url.searchParams.set('round', currentLevel);
     window.history.pushState({}, '', url);
 
+    // Background is sector-based via RenderSystem; world.sector is managed elsewhere.
+    if (world) {
+      world.sector = currentLevel;
+    }
+
     // Update HUD
     const hudRound = document.getElementById('hudRound');
     if (hudRound) hudRound.textContent = `SECTOR ${currentLevel}`;
-    
     const hudProgress = document.getElementById('hudProgress');
-    if (hudProgress) hudProgress.textContent = `${enemiesKilled}/${enemiesPerLevel}`;
+    if (hudProgress) hudProgress.textContent = `0%`;
 
-    // Reset and configure spawn system for new level
+    // Set current sector in spawn system and resume spawning
     if (window.spawnSystem) {
       window.spawnSystem.setSector(currentLevel);
-      window.spawnSystem.reset(); // Reset spawn state
       window.spawnSystem.resume();
     }
   }
 
   return {
     system(dt, world, bus) {
-      // Subscribe to enemy death events once
-      if (!createLevelProgressionSystem._subscribed) {
-        bus.on('enemy:died', () => {
-          enemiesKilled++;
-          console.log(`[LEVEL PROGRESSION] Enemy killed. Progress: ${enemiesKilled}/${enemiesPerLevel}`);
-          
-          // Update HUD progress
-          const hudProgress = document.getElementById('hudProgress');
-          if (hudProgress) {
-            hudProgress.textContent = `${enemiesKilled}/${enemiesPerLevel}`;
-          }
-          
-          // Check if level is complete
-          if (enemiesKilled >= enemiesPerLevel && !levelCompleteTriggered) {
-            levelCompleteTriggered = true;
-            
-            // Stop enemy spawning and despawn all enemies
-            if (window.spawnSystem) {
-              window.spawnSystem.pause();
-            }
-            
-            // Despawn all enemies
-            const enemies = world.byTag.get('enemy') || new Set();
-            const asteroids = world.byTag.get('asteroid') || new Set();
-            [...enemies, ...asteroids].forEach(id => markForRemoval(world, id));
-            flushRemovals(world);
-            
-            // Wait a moment for last effects, then show level complete
-            setTimeout(() => {
-              if (!isProcessingLevelComplete) {
-                isProcessingLevelComplete = true;
-                
-                showLevelCompleteScreen(() => {
-                  // Show card selection screen
-                  cardSelectionScreen.show((selectedCard) => {
-                    console.log('[LEVEL PROGRESSION] Card selection complete, proceeding to next level');
-                    proceedToNextLevel();
-                  });
-                });
-              }
-            }, 1000);
-          }
+      // Subscribe once for game over to stop progression
+      if (!createLevelProgressionSystem._subscribedGameOver) {
+        bus.on('player:died', () => {
+          isGameOver = true;
+          if (window.spawnSystem) window.spawnSystem.pause();
         });
-        
-        createLevelProgressionSystem._subscribed = true;
+        createLevelProgressionSystem._subscribedGameOver = true;
       }
-      
-      // Update HUD with level progress
+
+      // If player no longer exists in world, treat as game over
+      const playersCheck = [];
+      for (const e of world.entities.values()) {
+        if ((e.tags||[]).includes('player')) playersCheck.push(e);
+      }
+      if (playersCheck.length === 0) {
+        isGameOver = true;
+        if (window.spawnSystem) window.spawnSystem.pause();
+        return;
+      }
+
+      if (isGameOver) return;
+
+      // Travel-based progress accumulation (use ship speed/time)
+      // Prefer player velocity x if available; fallback to time
+      const players = playersCheck;
+      const player = players[0];
+
+      let travelGain = dt;
+      if (player && typeof player.vel?.x === 'number') {
+        // Normalize by typical speed to convert to ~seconds of progress
+        const norm = Math.max(120, player.stats?.speed || 260);
+        travelGain = Math.max(0, (Math.abs(player.vel.x) / norm) * dt);
+        // Ensure some progress even if player holds position
+        travelGain = Math.max(travelGain, dt * 0.5);
+      }
+
+      // Make progression 20% faster
+      travelGain *= 1.2;
+
+      travelProgress += travelGain;
+
+      // Update HUD with percentage progress
       const hudProgress = document.getElementById('hudProgress');
       if (hudProgress) {
-        hudProgress.textContent = `${enemiesKilled}/${enemiesPerLevel}`;
+        const pct = Math.min(100, Math.round((travelProgress / travelTarget) * 100));
+        hudProgress.textContent = `${pct}%`;
       }
 
-      // Check if we need to force level completion due to missed enemies
-      if (!levelCompleteTriggered && window.spawnSystem) {
-        const spawnComplete = window.spawnSystem.isSectorComplete();
-        const enemies = world.byTag.get('enemy') || new Set();
-        const asteroids = world.byTag.get('asteroid') || new Set();
-        const remainingEnemies = enemies.size + asteroids.size;
+      // On completion, pause spawns and transition
+      if (travelProgress >= travelTarget && !levelCompleteTriggered) {
+        levelCompleteTriggered = true;
 
-        // If spawn is complete and no enemies left, but we haven't hit the target
-        if (spawnComplete && remainingEnemies === 0 && enemiesKilled < enemiesPerLevel) {
-          console.log(`[LEVEL PROGRESSION] Force completing level due to missed enemies. Killed: ${enemiesKilled}/${enemiesPerLevel}`);
-          enemiesKilled = enemiesPerLevel;
-          bus.emit('enemy:died'); // This will trigger level completion
+        // Screen-clearing blast: remove all enemies and enemy bullets with explosion effects
+        const width = world.canvas?.width || 1280;
+        const height = world.canvas?.height || 720;
+        const centerX = width / 2;
+        const centerY = height / 2;
+
+        // Spawn multiple large explosions across the screen for visibility
+        const s = Math.min(width, height);
+        const blastPoints = [
+          { x: centerX, y: centerY, s: s * 0.40 },
+          { x: centerX - width * 0.30, y: centerY - height * 0.22, s: s * 0.28 },
+          { x: centerX + width * 0.30, y: centerY + height * 0.22, s: s * 0.28 },
+          { x: centerX - width * 0.35, y: centerY + height * 0.25, s: s * 0.24 },
+          { x: centerX + width * 0.35, y: centerY - height * 0.25, s: s * 0.24 },
+        ];
+        blastPoints.forEach(p => spawnExplosion(world, p.x, p.y, p.s, bus));
+
+        // Clear all enemies and enemy bullets
+        const toRemove = [];
+        for (const e of world.entities.values()) {
+          const tags = e.tags || [];
+          if (tags.includes('enemy') || tags.includes('enemy-bullet')) {
+            toRemove.push(e.id);
+          }
         }
+        toRemove.forEach(id => markForRemoval(world, id));
+
+        if (window.spawnSystem) window.spawnSystem.pause();
+        // Give explosions time to play on screen before overlay
+        setTimeout(() => {
+          if (!isProcessingLevelComplete) {
+            isProcessingLevelComplete = true;
+            showLevelCompleteScreen(() => {
+              cardSelectionScreen.show((selectedCard) => {
+                proceedToNextLevel(world);
+              });
+            });
+          }
+        }, 1200);
       }
     },
 
@@ -239,29 +267,14 @@ export function createLevelProgressionSystem() {
       return currentLevel;
     },
 
-    getEnemiesKilled() {
-      return enemiesKilled;
-    },
-
-    getEnemiesPerLevel() {
-      return enemiesPerLevel;
-    },
-
-    // Force level completion (for testing)
-    forceCompleteLevel(bus) {
-      if (!levelCompleteTriggered) {
-        enemiesKilled = enemiesPerLevel;
-        if (bus) bus.emit('enemy:died'); // Trigger the completion check
-      }
-    },
-
     // Reset for new game
     reset() {
       currentLevel = 1;
-      enemiesKilled = 0;
-      enemiesPerLevel = 10;
+      travelProgress = 0;
+      travelTarget = computeTravelTargetForLevel(currentLevel);
       levelCompleteTriggered = false;
       isProcessingLevelComplete = false;
+      isGameOver = false;
     }
   };
 }

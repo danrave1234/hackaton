@@ -71,9 +71,7 @@ export function SpawnSystem(dt, world) {
     SpawnSystem.paused = false;
     SpawnSystem.initialized = true;
     SpawnSystem.currentSector = 1;
-    SpawnSystem.enemiesSpawned = {};
-    SpawnSystem.sectorComplete = false;
-    
+
     // Expose control methods globally for level progression
     window.spawnSystem = {
       pause: () => { SpawnSystem.paused = true; },
@@ -82,50 +80,29 @@ export function SpawnSystem(dt, world) {
       isPaused: () => SpawnSystem.paused,
       setSector: (sector) => { 
         SpawnSystem.currentSector = sector;
-        SpawnSystem.enemiesSpawned = {};
-        SpawnSystem.sectorComplete = false;
         const config = SECTOR_CONFIG[sector] || SECTOR_CONFIG[1];
         SpawnSystem.spawnRate = config.spawnRate;
       },
       getCurrentSector: () => SpawnSystem.currentSector,
-      getSectorConfig: () => SECTOR_CONFIG[SpawnSystem.currentSector] || SECTOR_CONFIG[1],
-      isSectorComplete: () => SpawnSystem.sectorComplete
+      getSectorConfig: () => SECTOR_CONFIG[SpawnSystem.currentSector] || SECTOR_CONFIG[1]
     };
   }
   
   // Don't spawn if paused
-  if (SpawnSystem.paused || SpawnSystem.sectorComplete) return;
+  if (SpawnSystem.paused) return;
   
   // Get current sector configuration
   const currentConfig = SECTOR_CONFIG[SpawnSystem.currentSector] || SECTOR_CONFIG[1];
-  
-  // Check if we've spawned all enemies for this sector
-  const totalRequired = Object.values(currentConfig.enemies).reduce((sum, count) => sum + count, 0);
-  const totalSpawned = Object.values(SpawnSystem.enemiesSpawned).reduce((sum, count) => sum + count, 0);
-  
-  if (totalSpawned >= totalRequired) {
-    SpawnSystem.sectorComplete = true;
-    console.log(`[SPAWN] Sector ${SpawnSystem.currentSector} spawn complete: ${totalSpawned}/${totalRequired} enemies`);
-    return;
-  }
   
   SpawnSystem.last += dt;
   if (SpawnSystem.last > SpawnSystem.spawnRate) {
     SpawnSystem.last = 0;
     
-    // Determine which enemy type to spawn based on sector configuration
+    // Determine which enemy type to spawn based on sector configuration (weighted random)
     const enemyType = selectEnemyTypeForSector(SpawnSystem.currentSector);
     
     if (enemyType) {
       spawnEnemyOfType(world, enemyType);
-      
-      // Track spawned enemies
-      if (!SpawnSystem.enemiesSpawned[enemyType]) {
-        SpawnSystem.enemiesSpawned[enemyType] = 0;
-      }
-      SpawnSystem.enemiesSpawned[enemyType]++;
-      
-      console.log(`[SPAWN] Spawned ${enemyType} (${SpawnSystem.enemiesSpawned[enemyType]}/${currentConfig.enemies[getEnemyConfigKey(enemyType)] || 0})`);
     }
   }
 }
@@ -143,28 +120,19 @@ function getEnemyConfigKey(enemyType) {
 
 function selectEnemyTypeForSector(sector) {
   const config = SECTOR_CONFIG[sector] || SECTOR_CONFIG[1];
-  const spawned = SpawnSystem.enemiesSpawned;
-  
-  // Create weighted list of available enemy types
-  const availableTypes = [];
-  
-  Object.entries(config.enemies).forEach(([key, maxCount]) => {
+  const weights = config.enemies || {};
+
+  // Build weighted list (frequency = configured count)
+  const weighted = [];
+  Object.entries(weights).forEach(([key, count]) => {
     const enemyType = getEnemyTypeFromKey(key);
-    const spawnedCount = spawned[enemyType] || 0;
-    
-    if (spawnedCount < maxCount) {
-      // Add multiple entries for higher probability
-      const remaining = maxCount - spawnedCount;
-      for (let i = 0; i < remaining; i++) {
-        availableTypes.push(enemyType);
-      }
-    }
+    const times = Math.max(0, Math.floor(count));
+    for (let i = 0; i < times; i++) weighted.push(enemyType);
   });
-  
-  if (availableTypes.length === 0) return null;
-  
-  // Randomly select from available types
-  return availableTypes[Math.floor(Math.random() * availableTypes.length)];
+
+  if (weighted.length === 0) return ENEMY_TYPES.BASIC;
+
+  return weighted[Math.floor(Math.random() * weighted.length)];
 }
 
 function getEnemyTypeFromKey(key) {

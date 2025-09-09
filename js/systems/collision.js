@@ -45,21 +45,23 @@ export function CollisionSystem(dt, world, bus) {
           markForRemoval(world, b.id);
         }
 
-        // Handle enemy health/damage
+        // Handle enemy health/damage using bullet damage
         let enemyDestroyed = false;
-        if (e.health && e.health > 1) {
-          e.health--;
+        const dmg = Math.max(1, b.damage || 1);
+        if (e.health && e.health > dmg) {
+          e.health -= dmg;
           // Visual feedback for damaged enemy
           const originalColor = e.color;
           e.color = '#ffffff';
           setTimeout(() => { e.color = originalColor; }, 100);
-          console.log(`[COLLISION] Enemy damaged! Health: ${e.health}`);
+          console.log(`[COLLISION] Enemy damaged for ${dmg}! Health: ${e.health}`);
         } else {
           enemyDestroyed = true;
         }
 
         if (enemyDestroyed) {
           markForRemoval(world, e.id);
+          spawnExplosion(world, e.pos.x, e.pos.y, Math.max(40, e.radius * 2), bus);
 
           // Special bullets give more score, enemy type affects score
           let scoreValue = e.scoreValue || 100;
@@ -238,41 +240,35 @@ export function CollisionSystem(dt, world, bus) {
 
           break;
         } else {
-          // No shield - player dies
-          bus.emit('player:died', { x: p.pos.x, y: p.pos.y });
-          console.log('[COLLISION] Player hit enemy! Game Over!');
+          // No shield - compute damage instead of instant death
+          const damage = Math.max(5, Math.floor(e.radius * 0.8));
+          const playerDied = window.healthSystem?.damagePlayer?.(p, damage) || false;
+
+          markForRemoval(world, e.id); // Remove the enemy that hit the player
+          spawnExplosion(world, e.pos.x, e.pos.y, Math.max(40, e.radius * 2.5), bus);
+
+          if (playerDied) {
+            // Stop all player inputs immediately
+            if (window.PlayerKeys) {
+              window.PlayerKeys.clear();
+            }
+
+            // Calculate player visual center for explosion positioning
+            const playerW = p.size?.w || 120;
+            const playerH = p.size?.h || 60;
+            const centerX = p.pos.x + (playerW * 0.15);
+            const centerY = p.pos.y;
+
+            spawnExplosion(world, centerX, centerY, Math.max(playerW * 0.8, playerH * 0.8), bus);
+            markForRemoval(world, p.id);
+
+            bus.emit('player:died', { x: p.pos.x, y: p.pos.y });
+            console.log('[COLLISION] Player died! Game Over!');
+          } else {
+            console.log(`[COLLISION] Player took ${damage} damage!`);
+          }
           break;
         }
-        // Player hit by enemy - deal damage based on enemy size
-        const damage = Math.floor(e.radius * 2); // Larger enemies deal more damage
-        const playerDied = window.healthSystem?.damagePlayer?.(p, damage) || false;
-
-        markForRemoval(world, e.id); // Remove the enemy that hit the player
-        spawnExplosion(world, e.pos.x, e.pos.y, Math.max(40, e.radius * 2.5), bus);
-
-        if (playerDied) {
-          // Stop all player inputs immediately
-          if (window.PlayerKeys) {
-            window.PlayerKeys.clear();
-          }
-
-          // Calculate player visual center for explosion positioning
-          const playerW = p.size?.w || 120;
-          const playerH = p.size?.h || 60;
-          // Default anchor is 0.35, 0.5 (from HTML config)
-          const centerX = p.pos.x + (playerW * 0.15); // Move from 35% anchor to 50% center
-          const centerY = p.pos.y; // Y is already centered (50% anchor)
-
-          // Replace player with explosion at visual center (proportional to player size)
-          spawnExplosion(world, centerX, centerY, Math.max(playerW * 0.8, playerH * 0.8), bus);
-          markForRemoval(world, p.id);
-
-          bus.emit('player:died', { x: p.pos.x, y: p.pos.y });
-          console.log('[COLLISION] Player died! Game Over!');
-        } else {
-          console.log(`[COLLISION] Player took ${damage} damage!`);
-        }
-        break;
       }
     }
   }

@@ -21,6 +21,16 @@ export function createEnemy(x, y, r = 16, type = 'basic') {
     radius: r,
     color: '#fca5a5',
     type: type,
+    // Spritesheet for basic enemy (animated frames)
+    // Image alias resolves to asset/spritesheet/Basic enemy.png
+    sprite: type === ENEMY_TYPES.BASIC ? '@Basic enemy.png' : undefined,
+    // Grid: 2 columns x 3 rows based on provided sheet preview
+    spriteGrid: type === ENEMY_TYPES.BASIC ? '2x3' : undefined,
+    // Optional animation sequence (all frames), 8 FPS
+    spriteAnim: type === ENEMY_TYPES.BASIC ? '0,1,2,3,4,5' : undefined,
+    spriteFps: type === ENEMY_TYPES.BASIC ? 8 : undefined,
+    spriteIndex: 0,
+    health: 2
   };
 }
 
@@ -42,6 +52,8 @@ export function createHunterSeeker(x, y) {
     radius: 12,
     color: '#ff4444',
     type: ENEMY_TYPES.HUNTER_SEEKER,
+    // Sprite available in assets (single frame)
+    sprite: '@boss_spaceship.png',
     behavior: {
       phase: 'lock-on', // 'lock-on', 'pursuit', 'correction'
       lockTimer: 1.0, // Time to acquire target
@@ -63,6 +75,12 @@ export function createGeoLancer(x, y) {
     radius: 20,
     color: '#8b7355', // Rock-like color
     type: ENEMY_TYPES.GEO_LANCER,
+    // Sprite available in assets
+    sprite: '@geo_lancer_enemy_type_2.png',
+    // Spritesheet grid (cols x rows). Image is a 3x4 sheet (12 frames)
+    spriteGrid: '3x4',
+    // Current frame index (0-based). Renderer will pick sensible frames by state
+    spriteIndex: 0,
     behavior: {
       active: false,
       detectionRange: 250,
@@ -85,6 +103,8 @@ export function createFabricator(x, y) {
     radius: 35,
     color: '#666666',
     type: ENEMY_TYPES.FABRICATOR,
+    // Sprite available in assets
+    sprite: '@the_fabricator_summoner_enemy_type_3.png',
     behavior: {
       spawnCycle: 3.0,
       spawnTimer: 0,
@@ -116,6 +136,8 @@ export function createAsteroid(x, y, size = 'medium') {
     radius: config.radius,
     color: '#a0a0a0',
     type: ENEMY_TYPES.ASTEROID,
+    // Sprite available in assets
+    sprite: '@meteorite.png',
     behavior: {
       rotation: Math.random() * Math.PI * 2,
       rotationSpeed: (Math.random() - 0.5) * 2,
@@ -135,6 +157,8 @@ export function createMinion(x, y) {
     radius: 8,
     color: '#ff8888',
     type: 'minion',
+    // Sprite available in assets
+    sprite: '@the_fabricator_minion_enemy_type_3.png',
     behavior: {
       swarm: true,
       lifetime: 15.0, // Auto-destruct after 15 seconds
@@ -150,7 +174,8 @@ export function createBullet(x, y, vx, vy, w, h) {
     tags: ['bullet'],
     pos: { x, y },
     vel: { x: vx, y: vy },
-    rect: { w: Math.max(48, w), h: Math.max(16, h) },
+    rect: { w: Math.max(1, w), h: Math.max(1, h) },
+    damage: 1
   };
 }
 

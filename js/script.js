@@ -25,6 +25,14 @@ document.addEventListener('DOMContentLoaded', () => {
     bgm = new Audio(menuMusicSrc);
     bgm.loop = true;
     bgm.volume = 0.4;
+    bgm.preload = 'auto';
+    try { bgm.load(); } catch {}
+    // Attempt to start when the audio can play through without buffering
+    const onCanPlay = () => {
+      bgm && bgm.removeEventListener('canplaythrough', onCanPlay);
+      tryPlayBgm();
+    };
+    bgm.addEventListener('canplaythrough', onCanPlay, { once: true });
   }
   function tryPlayBgm() {
     if (!bgm) initMenuMusic();
@@ -37,11 +45,13 @@ document.addEventListener('DOMContentLoaded', () => {
           document.removeEventListener('pointerdown', once);
           document.removeEventListener('keydown', once);
           document.removeEventListener('touchstart', once);
+          document.removeEventListener('click', once);
           try { bgm && bgm.play(); } catch {}
         };
         document.addEventListener('pointerdown', once, { once: true });
         document.addEventListener('keydown', once, { once: true });
         document.addEventListener('touchstart', once, { once: true });
+        document.addEventListener('click', once, { once: true });
       });
     }
   }

@@ -7,7 +7,10 @@ export function CleanupSystem(dt, world) {
   
   for (const e of world.entities.values()) {
     if (!e.pos) continue;
-    if ((e.tags||[]).includes('bullet') && e.pos.x > bulletMaxRange) markForRemoval(world, e.id);
+    if ((e.tags||[]).includes('bullet')) {
+      const rightEdge = e.pos.x + (e.rect?.w || 0);
+      if (rightEdge >= bulletMaxRange) markForRemoval(world, e.id);
+    }
     if ((e.tags||[]).includes('enemy') && e.pos.x < -50) markForRemoval(world, e.id);
   }
   flushRemovals(world);
