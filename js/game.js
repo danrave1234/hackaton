@@ -11,6 +11,7 @@ import { CleanupSystem } from './systems/cleanup.js';
 import { SpawnSystem } from './systems/spawn.js';
 import { createScoreSystem } from './systems/score.js';
 import { createSfxSystem } from './systems/sfx.js';
+import { createDebugSystem, DebugSystemFunction } from './systems/debug.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   const $ = (sel) => document.querySelector(sel);
@@ -58,9 +59,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // Entities
   addEntity(world, createPlayer(120, canvas.height / 2));
 
-  // Score + SFX systems
+  // Score + SFX + Debug systems
   const score = createScoreSystem(hudScore);
   const sfx = createSfxSystem(canvas);
+  
+  // Initialize debug system (development only)
+  window.debugSystem = createDebugSystem();
 
   // Run loop in deterministic order
   createLoop([
@@ -73,6 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
     RenderSystem,
     score.system,
     sfx.system,
+    DebugSystemFunction,
   ], world, bus);
 });
 
