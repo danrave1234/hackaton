@@ -14,6 +14,40 @@ document.addEventListener('DOMContentLoaded', () => {
     credits: $('#modal-credits'),
   };
 
+  // Background music (menu)
+  const defaultMenuMusic = '@asset/music/menu_music.mp3';
+  const menuMusicSrcRaw = document.body?.dataset?.menuMusic || defaultMenuMusic;
+  const menuMusicSrc = menuMusicSrcRaw.replace(/^@asset\//, 'asset/');
+  /** @type {HTMLAudioElement | null} */
+  let bgm = null;
+  function initMenuMusic() {
+    if (bgm) return;
+    bgm = new Audio(menuMusicSrc);
+    bgm.loop = true;
+    bgm.volume = 0.4;
+  }
+  function tryPlayBgm() {
+    if (!bgm) initMenuMusic();
+    if (!bgm) return;
+    const p = bgm.play();
+    if (p && typeof p.then === 'function') {
+      p.catch(() => {
+        // Autoplay blocked; wait for first user interaction
+        const once = () => {
+          document.removeEventListener('pointerdown', once);
+          document.removeEventListener('keydown', once);
+          document.removeEventListener('touchstart', once);
+          try { bgm && bgm.play(); } catch {}
+        };
+        document.addEventListener('pointerdown', once, { once: true });
+        document.addEventListener('keydown', once, { once: true });
+        document.addEventListener('touchstart', once, { once: true });
+      });
+    }
+  }
+  initMenuMusic();
+  tryPlayBgm();
+
   function openModal(name) {
     const modal = modals[name];
     if (!modal) return;
@@ -99,12 +133,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (startBtn) {
     startBtn.addEventListener('click', () => {
-      showToast('Starting run... (placeholder)');
+      window.location.href = 'pages/game.html?round=1';
     });
   }
   if (leaderboardBtn) {
     leaderboardBtn.addEventListener('click', () => {
-      showToast('Leaderboard coming soon...');
+      window.location.href = 'pages/leaderboard.html';
     });
   }
 

@@ -7,6 +7,40 @@ html, body {
   overflow-x: hidden;
 }
 
+/* Round slide-in banner (game page) */
+.round-banner {
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  transform: translate(-50%, -120%);
+  z-index: 50;
+  background: rgba(3, 7, 18, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+  padding: 12px 28px;
+  box-shadow: 0 10px 30px rgba(6, 182, 212, 0.2), inset 0 0 20px rgba(6, 182, 212, 0.08);
+  backdrop-filter: blur(6px);
+}
+
+.round-banner--in {
+  animation: roundBannerIn 600ms ease-out forwards;
+}
+
+.round-banner--out {
+  animation: roundBannerOut 600ms ease-in forwards;
+}
+
+@keyframes roundBannerIn {
+  0% { transform: translate(-50%, -120%); opacity: 0; }
+  60% { transform: translate(-50%, 0%); opacity: 1; }
+  100% { transform: translate(-50%, 0%); opacity: 1; }
+}
+
+@keyframes roundBannerOut {
+  0% { transform: translate(-50%, 0%); opacity: 1; }
+  100% { transform: translate(-50%, -120%); opacity: 0; }
+}
+
 /* FNAF-Style Menu Items */
 .chimera-menu {
   position: relative;
@@ -36,14 +70,20 @@ html, body {
 
 /* Chevron selector for active item */
 .chimera-menu .item.selected::before {
-  content: '▶';
+  content: '';
   position: absolute;
   left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  color: #06b6d4;
-  font-size: 0.9rem;
+  width: 12px;
+  height: 12px;
+  display: inline-block;
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-position: center;
+  filter: drop-shadow(0 0 4px rgba(6, 182, 212, 0.6));
   animation: pulse 2s infinite;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2306b6d4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='9 18 15 12 9 6'/></svg>");
 }
 
 .chimera-menu .item.disabled {
