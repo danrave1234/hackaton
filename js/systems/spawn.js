@@ -98,6 +98,11 @@ export function SpawnSystem(dt, world) {
   if (SpawnSystem.last > SpawnSystem.spawnRate) {
     SpawnSystem.last = 0;
     
+    // Debug: Show current sector info
+    if (Math.random() < 0.1) { // Only log occasionally to avoid spam
+      console.log(`[SPAWN] Sector ${SpawnSystem.currentSector} config:`, currentConfig);
+    }
+    
     // Determine which enemy type to spawn based on sector configuration (weighted random)
     const enemyType = selectEnemyTypeForSector(SpawnSystem.currentSector);
     
@@ -132,7 +137,9 @@ function selectEnemyTypeForSector(sector) {
 
   if (weighted.length === 0) return ENEMY_TYPES.BASIC;
 
-  return weighted[Math.floor(Math.random() * weighted.length)];
+  const selected = weighted[Math.floor(Math.random() * weighted.length)];
+  console.log(`[SPAWN] Sector ${sector}: Selected ${selected} from ${weighted.length} options`);
+  return selected;
 }
 
 function getEnemyTypeFromKey(key) {
@@ -156,31 +163,38 @@ function spawnEnemyOfType(world, enemyType) {
   switch (enemyType) {
     case ENEMY_TYPES.HUNTER_SEEKER:
       enemy = createHunterSeeker(spawnX, baseY);
+      console.log(`[SPAWN] Created Hunter-Seeker at (${spawnX}, ${baseY})`);
       break;
       
     case ENEMY_TYPES.GEO_LANCER:
       // Spawn Geo-Lancers in asteroid fields (slightly varied positions)
       enemy = createGeoLancer(spawnX + Math.random() * 100, baseY + (Math.random() - 0.5) * 60);
+      console.log(`[SPAWN] Created Geo-Lancer at (${spawnX}, ${baseY})`);
       break;
       
     case ENEMY_TYPES.FABRICATOR:
       enemy = createFabricator(spawnX, baseY);
+      console.log(`[SPAWN] Created Fabricator at (${spawnX}, ${baseY})`);
       break;
       
     case ENEMY_TYPES.ASTEROID:
       const asteroidSize = Math.random() < 0.6 ? 'medium' : (Math.random() < 0.8 ? 'small' : 'large');
       enemy = createAsteroid(spawnX, baseY, asteroidSize);
+      console.log(`[SPAWN] Created Asteroid (${asteroidSize}) at (${spawnX}, ${baseY})`);
       break;
       
     case ENEMY_TYPES.BASIC:
     default:
       const r = 10 + Math.random() * 14;
       enemy = createEnemy(spawnX, baseY, r, ENEMY_TYPES.BASIC);
+      console.log(`[SPAWN] Created Basic Enemy at (${spawnX}, ${baseY})`);
       break;
   }
   
   if (enemy) {
     addEntity(world, enemy);
+  } else {
+    console.error(`[SPAWN] Failed to create enemy of type: ${enemyType}`);
   }
 }
 

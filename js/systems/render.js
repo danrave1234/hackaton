@@ -111,6 +111,11 @@ function renderEnemy(ctx, enemy, time) {
   ctx.save();
   ctx.translate(enemy.pos.x, enemy.pos.y);
   
+  // Debug: Log enemy types occasionally
+  if (Math.random() < 0.01) {
+    console.log(`[RENDER] Enemy type: ${enemy.type}, tags:`, enemy.tags);
+  }
+  
   // Render based on enemy type
   switch (enemy.type) {
     case 'hunter-seeker':
@@ -325,8 +330,32 @@ function renderMinion(ctx, enemy, time) {
   const sheet = enemy.sprite ? ensureEnemySprite(enemy.sprite) : null;
   const hasImg = sheet && sheet.img && sheet.img.complete && sheet.img.naturalWidth > 0;
   if (hasImg) {
+    const gridStr = enemy.spriteGrid || '1x1';
+    const m = /^([0-9]+)x([0-9]+)$/i.exec(gridStr.trim());
+    const cols = m ? parseInt(m[1], 10) : 1;
+    const rows = m ? parseInt(m[2], 10) : 1;
+
+    // Advance animation if sequence provided
+    if (enemy.spriteAnim) {
+      enemy._animT = (enemy._animT || 0) + (1/60);
+      const fps = Math.max(1, parseInt(enemy.spriteFps || 8, 10));
+      const seq = String(enemy.spriteAnim).split(',').map(s => parseInt(s.trim(), 10)).filter(Number.isFinite);
+      if (seq.length > 0) {
+        const frame = Math.floor(enemy._animT * fps) % seq.length;
+        enemy.spriteIndex = seq[frame];
+      }
+    }
+
+    const idx = Math.max(0, enemy.spriteIndex || 0);
+    const colW = Math.floor(sheet.img.naturalWidth / Math.max(1, cols));
+    const rowH = Math.floor(sheet.img.naturalHeight / Math.max(1, rows));
+    const cx = cols > 0 ? (idx % cols) : 0;
+    const cy = rows > 0 ? Math.floor(idx / cols) % rows : 0;
+    const sx = cx * colW;
+    const sy = cy * rowH;
+
     const size = enemy.radius * 2.2;
-    ctx.drawImage(sheet.img, -size/2, -size/2, size, size);
+    ctx.drawImage(sheet.img, sx, sy, colW, rowH, -size/2, -size/2, size, size);
   } else {
     // Small, swarming enemy
     ctx.fillStyle = enemy.color;
@@ -386,16 +415,13 @@ function renderBasicEnemy(ctx, enemy, time) {
     const sy = cy * rowH;
     ctx.drawImage(sheet.img, sx, sy, colW, rowH, -size/2, -size/2, size, size);
   } else {
-    // Standard circular enemy fallback
+    // Triangle basic look
     ctx.fillStyle = enemy.color || '#fca5a5';
     ctx.beginPath();
-    ctx.arc(0, 0, enemy.radius, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Simple visual detail
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(enemy.radius * 0.3, -enemy.radius * 0.3, enemy.radius * 0.2, 0, Math.PI * 2);
+    ctx.moveTo(enemy.radius, 0); // tip
+    ctx.lineTo(-enemy.radius, -enemy.radius * 0.6);
+    ctx.lineTo(-enemy.radius, enemy.radius * 0.6);
+    ctx.closePath();
     ctx.fill();
   }
 }

@@ -21,14 +21,11 @@ export function createEnemy(x, y, r = 16, type = 'basic') {
     radius: r,
     color: '#fca5a5',
     type: type,
-    // Spritesheet for basic enemy (animated frames)
-    // Image alias resolves to asset/spritesheet/Basic enemy.png
-    sprite: type === ENEMY_TYPES.BASIC ? '@Basic enemy.png' : undefined,
-    // Grid: 2 columns x 3 rows based on provided sheet preview
-    spriteGrid: type === ENEMY_TYPES.BASIC ? '2x3' : undefined,
-    // Optional animation sequence (all frames), 8 FPS
-    spriteAnim: type === ENEMY_TYPES.BASIC ? '0,1,2,3,4,5' : undefined,
-    spriteFps: type === ENEMY_TYPES.BASIC ? 8 : undefined,
+    // BASIC enemy uses vector triangle look (no sprite)
+    sprite: undefined,
+    spriteGrid: undefined,
+    spriteAnim: undefined,
+    spriteFps: undefined,
     spriteIndex: 0,
     health: 2
   };
@@ -53,7 +50,7 @@ export function createHunterSeeker(x, y) {
     color: '#ff4444',
     type: ENEMY_TYPES.HUNTER_SEEKER,
     // Sprite available in assets (single frame)
-    sprite: '@boss_spaceship.png',
+    sprite: '@Basic enemy.png',
     behavior: {
       phase: 'lock-on', // 'lock-on', 'pursuit', 'correction'
       lockTimer: 1.0, // Time to acquire target
@@ -159,6 +156,12 @@ export function createMinion(x, y) {
     type: 'minion',
     // Sprite available in assets
     sprite: '@the_fabricator_minion_enemy_type_3.png',
+    // Gnat sheet layout is 3 columns x 2 rows based on provided image
+    spriteGrid: '3x2',
+    // Animate flying using the first row frames
+    spriteAnim: '0,1,2',
+    spriteFps: 8,
+    spriteIndex: 0,
     behavior: {
       swarm: true,
       lifetime: 15.0, // Auto-destruct after 15 seconds

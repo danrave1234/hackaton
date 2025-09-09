@@ -226,6 +226,8 @@ export class CardSelectionScreen {
     
     // Hide card selection screen
     setTimeout(() => {
+      // Preserve callback before hide clears it
+      const proceed = this.onCardSelected;
       this.hide();
       
       // Create a countdown overlay
@@ -273,8 +275,8 @@ export class CardSelectionScreen {
         if (countdown <= 0) {
           clearInterval(interval);
           countdownOverlay.remove();
-          if (this.onCardSelected) {
-            this.onCardSelected(option);
+          if (typeof proceed === 'function') {
+            proceed(option);
           }
         }
       }, 1000);
