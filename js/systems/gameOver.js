@@ -63,7 +63,7 @@ export function createGameOverSystem() {
     });
 
     document.getElementById('backToMenu').addEventListener('click', () => {
-      window.location.href = 'index.html';
+      window.location.href = '/hackaton';
     });
 
     console.log('[GAME OVER] Game over screen displayed');

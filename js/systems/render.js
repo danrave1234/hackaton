@@ -182,9 +182,10 @@ function renderBoss(ctx, enemy, time) {
   const hasImg = sheet && sheet.img && sheet.img.complete && sheet.img.naturalWidth > 0;
   
   if (hasImg) {
-    // Render boss sprite
-    const size = enemy.radius * 2;
-    ctx.drawImage(sheet.img, -size/2, -size/2, size, size);
+    // Render boss sprite at actual size without scaling
+    const spriteWidth = sheet.img.naturalWidth;
+    const spriteHeight = sheet.img.naturalHeight;
+    ctx.drawImage(sheet.img, -spriteWidth/2, -spriteHeight/2, spriteWidth, spriteHeight);
   } else {
     // Fallback rendering for bosses
     ctx.fillStyle = enemy.color;
@@ -198,32 +199,6 @@ function renderBoss(ctx, enemy, time) {
     ctx.beginPath();
     ctx.arc(0, 0, enemy.radius + 5, 0, Math.PI * 2);
     ctx.stroke();
-  }
-  
-  // Boss health bar
-  if (enemy.health !== undefined && enemy.maxHealth !== undefined) {
-    const barWidth = Math.min(120, enemy.radius * 2.5);
-    const barHeight = 8;
-    const healthPercent = Math.max(0, enemy.health / enemy.maxHealth);
-    
-    // Background bar
-    ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
-    ctx.fillRect(-barWidth/2, -enemy.radius - 20, barWidth, barHeight);
-    
-    // Health bar
-    ctx.fillStyle = healthPercent > 0.3 ? 'rgba(0, 255, 0, 0.8)' : 'rgba(255, 255, 0, 0.8)';
-    ctx.fillRect(-barWidth/2, -enemy.radius - 20, barWidth * healthPercent, barHeight);
-    
-    // Border
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(-barWidth/2, -enemy.radius - 20, barWidth, barHeight);
-    
-    // Health text
-    ctx.fillStyle = 'white';
-    ctx.font = '12px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText(`${Math.ceil(enemy.health)}/${enemy.maxHealth}`, 0, -enemy.radius - 25);
   }
 }
 
@@ -629,8 +604,8 @@ function renderEnemyEffects(ctx, enemy, time) {
     ctx.restore();
   }
   
-  // Health indicator for enemies with multiple hit points
-  if (enemy.health && enemy.health > 1) {
+  // Health indicator for enemies with multiple hit points (but not final boss)
+  if (enemy.health && enemy.health > 1 && !enemy.isFinalBoss) {
     const maxHealth = 8; // Assume max health for fabricator
     const healthRatio = enemy.health / maxHealth;
     ctx.fillStyle = healthRatio > 0.6 ? '#00ff00' : healthRatio > 0.3 ? '#ffff00' : '#ff0000';

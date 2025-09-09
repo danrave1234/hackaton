@@ -5,7 +5,7 @@ import { CARD_TYPES, UPGRADE_DEFINITIONS, COMBO_EFFECTS, upgradeManager } from '
 
 export class DebugSystem {
   constructor() {
-    this.enabled = true; // Set to false for production
+    this.enabled = false; // Set to false for production
     this.currentLevel = 1;
     this.levelParts = ['Start', 'Enemies', 'Mini-Boss', 'Boss', 'Complete'];
     this.currentPart = 0;

@@ -189,7 +189,7 @@ export function createBioMechanicalOvermind(x, y) {
     radius: 80, // Large boss
     color: '#8B0000', // Dark red
     type: ENEMY_TYPES.BOSS_BIO_MECHANICAL,
-    sprite: 'boss_spaceship.png', // Use the specified sprite
+    sprite: '@asset/spritesheet/boss_spaceship.png', // Use the specified sprite
     behavior: {
       // Simplified for 1-minute fight
       hoverCenterX: 0, // Will be set to screen center
@@ -223,10 +223,10 @@ export function createSentinelPrime(x, y) {
     tags: ['enemy', 'boss', 'sentinel-prime'],
     pos: { x, y },
     vel: { x: 0, y: 0 }, // Start stationary, will hover around center
-    radius: 120, // Massive boss
+    radius: 180, // Massive boss - increased collision box
     color: '#FFD700', // Gold/orange
     type: ENEMY_TYPES.BOSS_SENTINEL_PRIME,
-    sprite: 'final_boss_evil.png', // Use the specified sprite
+    sprite: '@asset/spritesheet/final_boss_evil.png', // Use the specified sprite
     behavior: {
       // Simplified for manageable fight
       hoverCenterX: 0, // Will be set to screen center
@@ -246,8 +246,8 @@ export function createSentinelPrime(x, y) {
       targetY: y,
       moveSpeed: 50
     },
-    health: 450, // Level 10 boss HP
-    maxHealth: 450,
+    health: 700, // Level 10 boss HP - increased to 700
+    maxHealth: 700,
     size: 'final_boss',
     scoreValue: 25000,
     isBoss: true,
