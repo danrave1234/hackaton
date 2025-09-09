@@ -75,7 +75,6 @@ document.addEventListener('DOMContentLoaded', () => {
     ShootingSystem,
     MovementSystem,
     CollisionSystem,
-    sfx.system,
     CleanupSystem,
     RenderSystem,
     score.system,
