@@ -7,7 +7,7 @@ export function createScoreSystem(hudScoreEl) {
         bus.on('score:add', (v) => { score += v; });
         createScoreSystem._subscribed = true;
       }
-      if (hudScoreEl) hudScoreEl.textContent = `Score ${String(score).padStart(6, '0')}`;
+      if (hudScoreEl) hudScoreEl.textContent = String(score).padStart(6, '0');
     },
   };
 }

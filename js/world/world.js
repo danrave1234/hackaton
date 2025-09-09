@@ -1,6 +1,10 @@
 let nextId = 1;
 
 export function createWorld(ctx, canvas) {
+  // Get sector from URL parameters
+  const params = new URLSearchParams(window.location.search);
+  const sector = Math.max(1, Math.min(10, parseInt(params.get('round') || '1', 10) || 1));
+  
   return {
     time: 0,
     ctx,
@@ -8,6 +12,7 @@ export function createWorld(ctx, canvas) {
     entities: new Map(),
     byTag: new Map(),
     toRemove: new Set(),
+    sector, // Current sector (1-10)
   };
 }
 

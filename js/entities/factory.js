@@ -8,6 +8,8 @@ export function createPlayer(x, y) {
     color: '#a7f3d0',
     weapons: [{ rate: 0.12, speed: 520, w: 4, h: 1 }], // Ultra tiny bullets
     lastShot: 0,
+    health: { current: 100, max: 100 },
+    shield: { current: 0, max: 0, instances: 0 }, // Based on defensive cards from project idea
   };
 }
 

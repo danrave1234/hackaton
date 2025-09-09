@@ -13,6 +13,8 @@ import { createScoreSystem } from './systems/score.js';
 import { createSfxSystem } from './systems/sfx.js';
 import { createDebugSystem, DebugSystemFunction } from './systems/debug.js';
 import { createGameOverSystem } from './systems/gameOver.js';
+import { createHealthSystem } from './systems/health.js';
+import { ExplosionSystem } from './systems/explosion.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   const $ = (sel) => document.querySelector(sel);
@@ -31,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Optional sprite dataset is still supported by RenderSystem fallback (kept simple here)
 
   if (roundLabel) roundLabel.textContent = String(round);
-  if (hudRound) hudRound.textContent = `R${round}`;
+  if (hudRound) hudRound.textContent = `SECTOR ${round}`;
 
   if (banner) {
     banner.classList.add('round-banner--in');
@@ -60,16 +62,20 @@ document.addEventListener('DOMContentLoaded', () => {
   // Entities
   addEntity(world, createPlayer(120, canvas.height / 2));
 
-  // Score + SFX + Debug + Game Over systems
+  // Score + SFX + Debug + Game Over + Health systems
   const score = createScoreSystem(hudScore);
 
   // Enable SFX debugging to trace audio stacking issues (set to true if needed)
   window.DEBUG_SFX = false;
   const sfx = createSfxSystem(canvas);
   const gameOver = createGameOverSystem();
+  const health = createHealthSystem();
 
   // Initialize debug system (development only)
   window.debugSystem = createDebugSystem();
+
+  // Make health system globally available for collision system
+  window.healthSystem = health;
 
   // Run loop in deterministic order
   createLoop([
@@ -78,11 +84,13 @@ document.addEventListener('DOMContentLoaded', () => {
     ShootingSystem,
     MovementSystem,
     CollisionSystem,
+    ExplosionSystem,
     CleanupSystem,
     RenderSystem,
     score.system,
     sfx.system,
     gameOver.system,
+    health.system,
     DebugSystemFunction,
   ], world, bus);
 });
@@ -196,28 +204,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Sound effects - removed duplicate audio system
 
-  /** @type {{x:number,y:number,vx:number,vy:number,life:number,color:string}[]} */
-  const particles = [];
+  // Import explosion functions for simple renderer
+  let gameExplosionModule = null;
+  import('./systems/explosion.js').then(module => {
+    gameExplosionModule = module;
+    window.gameExplosionModule = module;
+  });
+  
+  /** @type {{x:number,y:number,size:number,anim:{currentFrame:number,timeAccumulator:number,totalFrames:number,fps:number,finished:boolean}}[]} */
+  const explosions = [];
   function spawnExplosion(x, y, baseColor = '#fca5a5') {
-    // Audio will be handled by the main ECS SFX system
-    const count = 12 + (Math.random() * 6 | 0);
-    for (let i = 0; i < count; i++) {
-      const angle = (Math.PI * 2) * Math.random();
-      const speed = 80 + Math.random() * 180;
-      particles.push({
-        x,
-        y,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
-        life: 0.5 + Math.random() * 0.4,
-        color: baseColor,
-      });
-    }
+    // Create sprite-based explosion for simple renderer
+    explosions.push({
+      x,
+      y,
+      size: 80, // Proportional size
+      anim: {
+        currentFrame: 0,
+        timeAccumulator: 0,
+        totalFrames: 64, // 8x8 grid (64 frames)
+        fps: 20, // Even faster animation to reduce delay
+        finished: false
+      },
+      color: baseColor
+    });
   }
 
   // Update labels
   if (roundLabel) roundLabel.textContent = String(round);
-  if (hudRound) hudRound.textContent = `R${round}`;
+  if (hudRound) hudRound.textContent = `SECTOR ${round}`;
 
   // Trigger round banner animation
   if (banner) {
@@ -323,15 +338,23 @@ document.addEventListener('DOMContentLoaded', () => {
       if (e.x < -50) enemies.splice(i, 1);
     }
 
-    // Update particles
-    for (let i = particles.length - 1; i >= 0; i--) {
-      const p = particles[i];
-      p.x += p.vx * dt;
-      p.y += p.vy * dt;
-      p.vx *= 0.98;
-      p.vy *= 0.98;
-      p.life -= dt;
-      if (p.life <= 0) particles.splice(i, 1);
+    // Update explosions
+    for (let i = explosions.length - 1; i >= 0; i--) {
+      const exp = explosions[i];
+      const anim = exp.anim;
+      
+      anim.timeAccumulator += dt;
+      const frameTime = 1 / anim.fps;
+      
+      if (anim.timeAccumulator >= frameTime) {
+        anim.timeAccumulator -= frameTime;
+        anim.currentFrame++;
+        
+        if (anim.currentFrame >= anim.totalFrames) {
+          anim.finished = true;
+          explosions.splice(i, 1);
+        }
+      }
     }
 
     // Collisions
@@ -352,24 +375,74 @@ document.addEventListener('DOMContentLoaded', () => {
     if (hudScore) hudScore.textContent = `Score ${String(score).padStart(6, '0')}`;
   }
 
-  function drawBackground(ctx, t) {
-    // Parallax starfield
-    ctx.fillStyle = '#0b1220';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  // Sector background cache for simple renderer
+  let sectorBackgroundCache = new Map();
+  
+  function ensureSectorBackground(sector) {
+    if (sectorBackgroundCache.has(sector)) {
+      return sectorBackgroundCache.get(sector);
+    }
+    
+    const sectorNames = {
+      1: 'sun', 2: 'earth', 3: 'moon', 4: 'mars', 5: 'jupiter',
+      6: 'saturn', 7: 'uranus', 8: 'neptune', 9: 'galaxy', 10: 'blackhole'
+    };
+    
+    const sectorName = sectorNames[sector] || 'sun';
+    const filename = `${sector}_sector_${sectorName}.png`;
+    let src = `asset/background/${filename}`;
+    
+    // Handle relative path for pages folder
+    if (/\/pages\//.test(location.pathname)) {
+      src = '../' + src;
+    }
+    
+    const img = new Image();
+    img.src = src;
+    
+    const backgroundData = { img, src, sector };
+    sectorBackgroundCache.set(sector, backgroundData);
+    return backgroundData;
+  }
 
-    const layers = [
-      { color: 'rgba(255,255,255,0.4)', speed: 50, size: 2 },
-      { color: 'rgba(186,230,253,0.35)', speed: 90, size: 2.5 },
-      { color: 'rgba(103,232,249,0.30)', speed: 140, size: 3 },
-    ];
-    layers.forEach((layer, idx) => {
-      ctx.fillStyle = layer.color;
-      for (let i = 0; i < 80; i++) {
-        const x = ((i * 120 + (t * layer.speed)) % (canvas.width + 200)) - 100;
-        const y = (i * 53 + idx * 37) % canvas.height;
-        ctx.fillRect(canvas.width - x, y, layer.size, layer.size);
-      }
-    });
+  function drawBackground(ctx, t) {
+    // Get sector background
+    const sectorBg = ensureSectorBackground(round);
+    
+      if (sectorBg && sectorBg.img && sectorBg.img.complete && sectorBg.img.naturalWidth > 0) {
+        ctx.save();
+        
+        // Enable smoothing for better quality
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        
+        // Draw background image normally
+        ctx.drawImage(sectorBg.img, 0, 0, canvas.width, canvas.height);
+        
+        // Add darkening overlay for better readability
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)'; // 50% dark overlay
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.restore();
+     } else {
+      // Fallback: Parallax starfield
+      ctx.fillStyle = '#0b1220';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const layers = [
+        { color: 'rgba(255,255,255,0.4)', speed: 50, size: 2 },
+        { color: 'rgba(186,230,253,0.35)', speed: 90, size: 2.5 },
+        { color: 'rgba(103,232,249,0.30)', speed: 140, size: 3 },
+      ];
+      layers.forEach((layer, idx) => {
+        ctx.fillStyle = layer.color;
+        for (let i = 0; i < 80; i++) {
+          const x = ((i * 120 + (t * layer.speed)) % (canvas.width + 200)) - 100;
+          const y = (i * 53 + idx * 37) % canvas.height;
+          ctx.fillRect(canvas.width - x, y, layer.size, layer.size);
+        }
+      });
+    }
   }
 
   function render() {
@@ -487,13 +560,107 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // Particles (explosions)
-    particles.forEach((p) => {
-      const alpha = Math.max(0, Math.min(1, p.life / 0.5));
-      ctx.fillStyle = `rgba(252,165,165,${alpha})`;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
-      ctx.fill();
+    // Explosions
+    explosions.forEach((exp) => {
+      const anim = exp.anim;
+      if (anim.finished) return;
+      
+      // Try to use explosion sprite if available
+      const explosionSprite = gameExplosionModule?.ensureExplosionSprite?.(canvas);
+      
+      // Calculate animation progress for effects
+      const progress = anim.currentFrame / anim.totalFrames;
+      const scale = 1.0 + (progress * 0.3); // Start normal size, grow moderately during animation
+      const alpha = Math.max(0, 1 - (progress * 0.6)); // Fade out more naturally
+      
+      if (explosionSprite && explosionSprite.img && explosionSprite.img.complete && explosionSprite.img.naturalWidth > 0) {
+        const img = explosionSprite.img;
+        const cols = explosionSprite.cols || 8;
+        const rows = explosionSprite.rows || 8;
+        
+        // Calculate source rectangle for current frame
+        const frameIndex = Math.min(anim.currentFrame, (cols * rows) - 1);
+        
+        const colW = Math.floor(img.naturalWidth / cols);
+        const rowH = Math.floor(img.naturalHeight / rows);
+        
+        const cx = frameIndex % cols;
+        const cy = Math.floor(frameIndex / cols) % rows;
+        
+        const sx = cx * colW;
+        const sy = cy * rowH;
+        
+        ctx.save();
+        
+        // Enable image smoothing for better quality
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        
+        // Apply additive blending for bright explosion effect
+        ctx.globalCompositeOperation = 'screen';
+        ctx.globalAlpha = alpha;
+        
+        // Calculate scaled size
+        const size = exp.size || 80;
+        const scaledSize = size * scale;
+        
+        // Draw main explosion sprite
+        ctx.drawImage(img, sx, sy, colW, rowH, exp.x - scaledSize / 2, exp.y - scaledSize / 2, scaledSize, scaledSize);
+        
+        // Add a glowing outer layer for extra effect
+        if (progress < 0.8) {
+          ctx.globalAlpha = alpha * 0.3;
+          const glowSize = scaledSize * 1.5;
+          ctx.drawImage(img, sx, sy, colW, rowH, exp.x - glowSize / 2, exp.y - glowSize / 2, glowSize, glowSize);
+        }
+        
+        ctx.restore();
+        
+      } else {
+        // Enhanced fallback: multi-layer animated explosion
+        ctx.save();
+        
+        const size = exp.size || 80;
+        
+        // Outer glow layer
+        const outerRadius = (size / 2) * scale * 1.5;
+        const outerGradient = ctx.createRadialGradient(exp.x, exp.y, 0, exp.x, exp.y, outerRadius);
+        outerGradient.addColorStop(0, `rgba(255, 140, 0, ${alpha * 0.4})`);
+        outerGradient.addColorStop(0.5, `rgba(255, 69, 0, ${alpha * 0.2})`);
+        outerGradient.addColorStop(1, 'rgba(255, 69, 0, 0)');
+        
+        ctx.fillStyle = outerGradient;
+        ctx.beginPath();
+        ctx.arc(exp.x, exp.y, outerRadius, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Main explosion layer
+        const mainRadius = (size / 2) * scale;
+        const mainGradient = ctx.createRadialGradient(exp.x, exp.y, 0, exp.x, exp.y, mainRadius);
+        mainGradient.addColorStop(0, `rgba(255, 255, 255, ${alpha * 0.9})`);
+        mainGradient.addColorStop(0.3, `rgba(255, 140, 0, ${alpha * 0.8})`);
+        mainGradient.addColorStop(0.7, `rgba(255, 69, 0, ${alpha * 0.6})`);
+        mainGradient.addColorStop(1, `rgba(139, 0, 0, ${alpha * 0.2})`);
+        
+        ctx.fillStyle = mainGradient;
+        ctx.beginPath();
+        ctx.arc(exp.x, exp.y, mainRadius, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Inner bright core
+        const coreRadius = (size / 2) * scale * 0.4;
+        const coreGradient = ctx.createRadialGradient(exp.x, exp.y, 0, exp.x, exp.y, coreRadius);
+        coreGradient.addColorStop(0, `rgba(255, 255, 255, ${alpha})`);
+        coreGradient.addColorStop(0.5, `rgba(255, 255, 200, ${alpha * 0.8})`);
+        coreGradient.addColorStop(1, `rgba(255, 140, 0, ${alpha * 0.4})`);
+        
+        ctx.fillStyle = coreGradient;
+        ctx.beginPath();
+        ctx.arc(exp.x, exp.y, coreRadius, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.restore();
+      }
     });
   }
 

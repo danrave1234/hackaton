@@ -1,6 +1,10 @@
 // Internal cache for spritesheet and meta
 let playerSpriteCache = null;
 let bulletSpriteCache = null;
+let sectorBackgroundCache = new Map(); // Cache for sector backgrounds
+
+// Import explosion rendering
+import { renderExplosions } from './explosion.js';
 
 function resolveSpriteSrc(raw) {
   if (!raw) return undefined;
@@ -53,26 +57,84 @@ function ensureBulletSprite(canvas) {
   return bulletSpriteCache;
 }
 
-export function RenderSystem(dt, world) {
-  const { ctx, canvas } = world;
-  // Background
-  ctx.fillStyle = '#0b1220';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+function ensureSectorBackground(sector) {
+  if (sectorBackgroundCache.has(sector)) {
+    return sectorBackgroundCache.get(sector);
+  }
+  
+  // Create background image path based on sector number
+  const filename = `${sector}_sector_${getSectorName(sector)}.png`;
+  let src = `asset/background/${filename}`;
+  
+  // Handle relative path for pages folder
+  if (/\/pages\//.test(location.pathname)) {
+    src = '../' + src;
+  }
+  
+  const img = new Image();
+  img.src = src;
+  
+  const backgroundData = { img, src, sector };
+  sectorBackgroundCache.set(sector, backgroundData);
+  return backgroundData;
+}
 
-  // Simple parallax
-  const layers = [
-    { color: 'rgba(255,255,255,0.4)', speed: 50, size: 2 },
-    { color: 'rgba(186,230,253,0.35)', speed: 90, size: 2.5 },
-    { color: 'rgba(103,232,249,0.30)', speed: 140, size: 3 },
-  ];
-  layers.forEach((layer, idx) => {
-    world.ctx.fillStyle = layer.color;
-    for (let i = 0; i < 80; i++) {
-      const x = ((i * 120 + (world.time * layer.speed)) % (canvas.width + 200)) - 100;
-      const y = (i * 53 + idx * 37) % canvas.height;
-      world.ctx.fillRect(canvas.width - x, y, layer.size, layer.size);
-    }
-  });
+function getSectorName(sector) {
+  const sectorNames = {
+    1: 'sun',
+    2: 'earth', 
+    3: 'moon',
+    4: 'mars',
+    5: 'jupiter',
+    6: 'saturn',
+    7: 'uranus',
+    8: 'neptune',
+    9: 'galaxy',
+    10: 'blackhole'
+  };
+  return sectorNames[sector] || 'sun';
+}
+
+export function RenderSystem(dt, world) {
+  const { ctx, canvas, sector } = world;
+  
+  // Render sector background
+  const sectorBg = ensureSectorBackground(sector || 1);
+  if (sectorBg && sectorBg.img && sectorBg.img.complete && sectorBg.img.naturalWidth > 0) {
+    ctx.save();
+    
+    // Enable smoothing for better quality
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    
+    // Draw background image normally
+    ctx.drawImage(sectorBg.img, 0, 0, canvas.width, canvas.height);
+    
+    // Add darkening overlay for better readability
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)'; // 50% dark overlay
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    ctx.restore();
+  } else {
+    // Fallback background with space colors
+    ctx.fillStyle = '#0b1220';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Simple parallax stars as fallback
+    const layers = [
+      { color: 'rgba(255,255,255,0.4)', speed: 50, size: 2 },
+      { color: 'rgba(186,230,253,0.35)', speed: 90, size: 2.5 },
+      { color: 'rgba(103,232,249,0.30)', speed: 140, size: 3 },
+    ];
+    layers.forEach((layer, idx) => {
+      ctx.fillStyle = layer.color;
+      for (let i = 0; i < 80; i++) {
+        const x = ((i * 120 + (world.time * layer.speed)) % (canvas.width + 200)) - 100;
+        const y = (i * 53 + idx * 37) % canvas.height;
+        ctx.fillRect(canvas.width - x, y, layer.size, layer.size);
+      }
+    });
+  }
 
   const playerSheet = ensurePlayerSprite(canvas);
   if (playerSheet && playerSheet.anim.length > 0) {
@@ -139,6 +201,9 @@ export function RenderSystem(dt, world) {
       ctx.fill();
     }
   }
+  
+  // Render explosions
+  renderExplosions(ctx, world);
 }
 
 

@@ -2,6 +2,20 @@ import { addEntity } from '../world/world.js';
 import { createBullet } from '../entities/factory.js';
 
 export function ShootingSystem(dt, world, bus) {
+  // Check if player is alive
+  let playerExists = false;
+  for (const e of world.entities.values()) {
+    if ((e.tags||[]).includes('player')) {
+      playerExists = true;
+      break;
+    }
+  }
+  
+  // If no player exists, don't allow shooting
+  if (!playerExists) {
+    return;
+  }
+  
   for (const e of world.entities.values()) {
     if (!(e.tags||[]).includes('player')) continue;
     const keys = window.PlayerKeys || new Set();

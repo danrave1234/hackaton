@@ -1,4 +1,5 @@
 import { markForRemoval } from '../world/world.js';
+import { spawnExplosion } from './explosion.js';
 
 export function CollisionSystem(dt, world, bus) {
   const bullets = [];
@@ -26,7 +27,7 @@ export function CollisionSystem(dt, world, bus) {
         markForRemoval(world, e.id);
         bus.emit('score:add', 100);
         bus.emit('enemy:killed'); // Emit event for level progression
-        if (bus && typeof bus.emit === 'function') bus.emit('sfx:explosion', { x: e.pos.x, y: e.pos.y });
+        spawnExplosion(world, e.pos.x, e.pos.y, Math.max(40, e.radius * 2.5), bus);
         break;
       }
     }
@@ -46,9 +47,35 @@ export function CollisionSystem(dt, world, bus) {
       const distanceSquared = (dx - px - pw/2) * (dx - px - pw/2) + (dy - py - ph/2) * (dy - py - ph/2);
       
       if (distanceSquared < e.radius * e.radius) {
-        // Player hit by enemy - trigger death
-        bus.emit('player:died', { x: p.pos.x, y: p.pos.y });
-        console.log('[COLLISION] Player hit enemy! Game Over!');
+        // Player hit by enemy - deal damage based on enemy size
+        const damage = Math.floor(e.radius * 2); // Larger enemies deal more damage
+        const playerDied = window.healthSystem?.damagePlayer?.(p, damage) || false;
+        
+        markForRemoval(world, e.id); // Remove the enemy that hit the player
+        spawnExplosion(world, e.pos.x, e.pos.y, Math.max(40, e.radius * 2.5), bus);
+        
+        if (playerDied) {
+          // Stop all player inputs immediately
+          if (window.PlayerKeys) {
+            window.PlayerKeys.clear();
+          }
+          
+          // Calculate player visual center for explosion positioning
+          const playerW = p.size?.w || 120;
+          const playerH = p.size?.h || 60;
+          // Default anchor is 0.35, 0.5 (from HTML config)
+          const centerX = p.pos.x + (playerW * 0.15); // Move from 35% anchor to 50% center
+          const centerY = p.pos.y; // Y is already centered (50% anchor)
+          
+          // Replace player with explosion at visual center (proportional to player size)
+          spawnExplosion(world, centerX, centerY, Math.max(playerW * 0.8, playerH * 0.8), bus);
+          markForRemoval(world, p.id);
+          
+          bus.emit('player:died', { x: p.pos.x, y: p.pos.y });
+          console.log('[COLLISION] Player died! Game Over!');
+        } else {
+          console.log(`[COLLISION] Player took ${damage} damage!`);
+        }
         break;
       }
     }
