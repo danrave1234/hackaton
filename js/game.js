@@ -13,6 +13,9 @@ import { createScoreSystem } from './systems/score.js';
 import { createSfxSystem } from './systems/sfx.js';
 import { createDebugSystem, DebugSystemFunction } from './systems/debug.js';
 import { createGameOverSystem } from './systems/gameOver.js';
+import { createLevelProgressionSystem } from './systems/levelProgression.js';
+import { SupportSystem } from './systems/support.js';
+import { ComboSystem } from './systems/combos.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   const $ = (sel) => document.querySelector(sel);
@@ -60,10 +63,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // Entities
   addEntity(world, createPlayer(120, canvas.height / 2));
 
-  // Score + SFX + Debug + Game Over systems
+  // Score + SFX + Debug + Game Over + Level Progression systems
   const score = createScoreSystem(hudScore);
   const sfx = createSfxSystem(canvas);
   const gameOver = createGameOverSystem();
+  const levelProgression = createLevelProgressionSystem();
   
   // Initialize debug system (development only)
   window.debugSystem = createDebugSystem();
@@ -73,6 +77,8 @@ document.addEventListener('DOMContentLoaded', () => {
     PlayerControlSystem,
     SpawnSystem,
     ShootingSystem,
+    SupportSystem,
+    ComboSystem,
     MovementSystem,
     CollisionSystem,
     CleanupSystem,
@@ -80,6 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
     score.system,
     sfx.system,
     gameOver.system,
+    levelProgression.system,
     DebugSystemFunction,
   ], world, bus);
 });
