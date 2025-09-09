@@ -424,8 +424,8 @@ function renderFabricator(ctx, enemy, time) {
     ctx.fillRect(size * 0.3, -size * 0.8, size * 0.4, size * 0.3);
     ctx.fillRect(size * 0.3, size * 0.5, size * 0.4, size * 0.3);
   }
-  // Health indicator bars
-  if (enemy.health) {
+  // Health indicator bars (but not bosses)
+  if (enemy.health && !enemy.isBoss && !enemy.isFinalBoss) {
     ctx.fillStyle = enemy.health > 4 ? '#00ff00' : enemy.health > 2 ? '#ffff00' : '#ff0000';
     const barWidth = (enemy.health / 8) * size * 2;
     ctx.fillRect(-size, -size - 8, barWidth, 4);
@@ -604,9 +604,9 @@ function renderEnemyEffects(ctx, enemy, time) {
     ctx.restore();
   }
   
-  // Health indicator for enemies with multiple hit points (but not final boss)
-  if (enemy.health && enemy.health > 1 && !enemy.isFinalBoss) {
-    const maxHealth = 8; // Assume max health for fabricator
+  // Health indicator for enemies with multiple hit points (but not bosses)
+  if (enemy.health && enemy.health > 1 && !enemy.isBoss && !enemy.isFinalBoss) {
+    const maxHealth = enemy.maxHealth || 8; // Use actual maxHealth if available
     const healthRatio = enemy.health / maxHealth;
     ctx.fillStyle = healthRatio > 0.6 ? '#00ff00' : healthRatio > 0.3 ? '#ffff00' : '#ff0000';
     ctx.fillRect(-enemy.radius, -enemy.radius - 12, (enemy.radius * 2) * healthRatio, 3);

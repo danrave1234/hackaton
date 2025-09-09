@@ -191,23 +191,48 @@ export function createBioMechanicalOvermind(x, y) {
     type: ENEMY_TYPES.BOSS_BIO_MECHANICAL,
     sprite: '@asset/spritesheet/boss_spaceship.png', // Use the specified sprite
     behavior: {
-      // Simplified for 1-minute fight
+      // Hovering movement (maintained)
       hoverCenterX: 0, // Will be set to screen center
       hoverCenterY: 0, // Will be set to screen center
       hoverRadius: 100, // How far from center to hover
       hoverAngle: 0, // Current angle around center
       hoverSpeed: 1.0, // Angular speed
       moveToCenter: true, // Initially move to center
-      
-      // Attack patterns - simplified
-      attackTimer: 0,
-      attackRate: 2.0, // Attack every 2 seconds
-      attackType: 0, // Cycles through different attacks
-      
-      // Movement
       targetX: x,
       targetY: y,
-      moveSpeed: 60
+      moveSpeed: 60,
+      
+      // 3-Phase Battle System
+      phase: 1, // Phase 1: Corrosive Growth, 2: Swarm Release, 3: Desperation Pulse
+      phaseTimer: 0,
+      maxHealth: 300,
+      
+      // Phase 1: Corrosive Growth
+      tendrils: [], // Array of tendril positions/health
+      tendrilRegenTimer: 0,
+      tendrilRegenRate: 2.0,
+      corrosiveFireRate: 1.5,
+      corrosiveTimer: 0,
+      
+      // Phase 2: Swarm Release
+      swarmTimer: 0,
+      swarmRate: 0.8,
+      laserSweepTimer: 0,
+      laserSweepRate: 3.0,
+      laserAngle: 0,
+      
+      // Phase 3: Desperation Pulse
+      pulseTimer: 0,
+      pulseRate: 2.5,
+      pulseChargeTime: 1.0,
+      pulsing: false,
+      pulseExpansion: 0,
+      contractTimer: 0,
+      contractRate: 0.5,
+      
+      // Visual effects
+      hoverTarget: y,
+      screenShake: 0
     },
     health: 300, // Level 5 boss HP
     maxHealth: 300,
@@ -223,28 +248,65 @@ export function createSentinelPrime(x, y) {
     tags: ['enemy', 'boss', 'sentinel-prime'],
     pos: { x, y },
     vel: { x: 0, y: 0 }, // Start stationary, will hover around center
-    radius: 180, // Massive boss - increased collision box
+    radius: 150, // Increased collision box for final boss - increased collision box
     color: '#FFD700', // Gold/orange
     type: ENEMY_TYPES.BOSS_SENTINEL_PRIME,
     sprite: '@asset/spritesheet/final_boss_evil.png', // Use the specified sprite
     behavior: {
-      // Simplified for manageable fight
+      // Hovering movement (maintained)
       hoverCenterX: 0, // Will be set to screen center
       hoverCenterY: 0, // Will be set to screen center
       hoverRadius: 120, // How far from center to hover
       hoverAngle: 0, // Current angle around center
       hoverSpeed: 0.8, // Angular speed (slower than level 5 boss)
       moveToCenter: true, // Initially move to center
-      
-      // Attack patterns - simplified
-      attackTimer: 0,
-      attackRate: 1.8, // Attack every 1.8 seconds (slightly faster than level 5)
-      attackType: 0, // Cycles through different attacks
-      
-      // Movement
       targetX: x,
       targetY: y,
-      moveSpeed: 50
+      moveSpeed: 50,
+      
+      // 3-Phase Battle System
+      phase: 1, // Phase 1: Armored Barrage, 2: Core Exposure, 3: Overload Protocol
+      phaseTimer: 0,
+      maxHealth: 700,
+      
+      // Weapon emplacements (destroyable)
+      weaponEmplacements: [
+        { id: 'shoulder_left', health: 80, maxHealth: 80, destroyed: false, pos: { x: -60, y: -40 }, type: 'missile' },
+        { id: 'shoulder_right', health: 80, maxHealth: 80, destroyed: false, pos: { x: 60, y: -40 }, type: 'particle' },
+        { id: 'arm_left', health: 60, maxHealth: 60, destroyed: false, pos: { x: -80, y: 20 }, type: 'cannon' },
+        { id: 'arm_right', health: 60, maxHealth: 60, destroyed: false, pos: { x: 80, y: 20 }, type: 'cannon' }
+      ],
+      
+      // Phase 1: Armored Barrage
+      starfallTimer: 0,
+      starfallRate: 2.0,
+      particleTimer: 0,
+      particleRate: 1.5,
+      cannonTimer: 0,
+      cannonRate: 0.8,
+      
+      // Phase 2: Core Exposure
+      coreExposed: false,
+      deflectorTimer: 0,
+      deflectorRate: 4.0,
+      deflectorActive: false,
+      phantomDrones: [],
+      droneSpawnTimer: 0,
+      droneSpawnRate: 3.0,
+      
+      // Phase 3: Overload Protocol
+      overloadActive: false,
+      barrierTimer: 0,
+      barrierRate: 1.5,
+      barrierActive: false,
+      desperationLevel: 0, // 0-3, increases attack speed
+      
+      // Visual effects
+      energyPulse: 0,
+      coreGlow: 0,
+      weaponGlow: {},
+      hoverTarget: y,
+      screenShake: 0
     },
     health: 700, // Level 10 boss HP - increased to 700
     maxHealth: 700,

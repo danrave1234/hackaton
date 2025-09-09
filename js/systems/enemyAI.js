@@ -253,10 +253,11 @@ function updateBasicBehavior(enemy, dt) {
   enemy.vel.y = Math.sin(Date.now() * 0.003 + enemy.pos.x * 0.01) * 30;
 }
 
-// Bio-Mechanical Overmind Boss AI (Level 5) - Simplified hovering behavior
+// Bio-Mechanical Overmind Boss AI (Level 5) - Complex 3-phase behavior with hovering
 function updateBioMechanicalOvermindBehavior(enemy, player, dt, world, bus) {
   const behavior = enemy.behavior;
   const canvas = world.canvas;
+  const healthPercent = enemy.health / enemy.maxHealth;
   
   // Initialize center position if not set
   if (behavior.hoverCenterX === 0) {
@@ -264,44 +265,75 @@ function updateBioMechanicalOvermindBehavior(enemy, player, dt, world, bus) {
     behavior.hoverCenterY = canvas.height / 2;
   }
   
-  // Move to center position initially
+  // Phase transitions based on health
+  if (healthPercent > 0.66 && behavior.phase !== 1) {
+    behavior.phase = 1;
+    behavior.phaseTimer = 0;
+    console.log('[BOSS] Bio-Mechanical Overmind entering Phase 1: Corrosive Growth');
+  } else if (healthPercent <= 0.66 && healthPercent > 0.33 && behavior.phase !== 2) {
+    behavior.phase = 2;
+    behavior.phaseTimer = 0;
+    behavior.swarmTimer = 0;
+    console.log('[BOSS] Bio-Mechanical Overmind entering Phase 2: Swarm Release');
+  } else if (healthPercent <= 0.33 && behavior.phase !== 3) {
+    behavior.phase = 3;
+    behavior.phaseTimer = 0;
+    behavior.pulseTimer = 0;
+    behavior.pulsing = false;
+    console.log('[BOSS] Bio-Mechanical Overmind entering Phase 3: Desperation Pulse');
+  }
+  
+  // Update phase timer
+  behavior.phaseTimer += dt;
+  
+  // Hovering movement (maintained from simplified version)
   if (behavior.moveToCenter) {
     const dx = behavior.hoverCenterX - enemy.pos.x;
     const dy = behavior.hoverCenterY - enemy.pos.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
     
     if (distance > 50) {
-      // Move towards center
       enemy.vel.x = (dx / distance) * behavior.moveSpeed;
       enemy.vel.y = (dy / distance) * behavior.moveSpeed;
     } else {
-      // Reached center, start hovering
       behavior.moveToCenter = false;
       enemy.vel.x = 0;
       enemy.vel.y = 0;
     }
   } else {
-    // Hover around center in circular pattern
+    // Hover around center with menacing movement
     behavior.hoverAngle += behavior.hoverSpeed * dt;
+    const hoverOffset = Math.sin(behavior.phaseTimer * 0.8) * 20;
     
     const targetX = behavior.hoverCenterX + Math.cos(behavior.hoverAngle) * behavior.hoverRadius;
-    const targetY = behavior.hoverCenterY + Math.sin(behavior.hoverAngle) * behavior.hoverRadius * 0.5; // Elliptical
+    const targetY = behavior.hoverCenterY + Math.sin(behavior.hoverAngle) * behavior.hoverRadius * 0.5 + hoverOffset;
     
-    // Smooth movement towards hover position
     const dx = targetX - enemy.pos.x;
     const dy = targetY - enemy.pos.y;
     
-    enemy.vel.x = dx * 2; // Adjust speed multiplier for smooth following
+    enemy.vel.x = dx * 2;
     enemy.vel.y = dy * 2;
   }
   
-  // Simple attack pattern
-  behavior.attackTimer += dt;
-  if (behavior.attackTimer >= behavior.attackRate) {
-    // Fire simple projectiles at player
-    fireSimpleBossProjectile(enemy, player, world, bus);
-    behavior.attackTimer = 0;
-    behavior.attackType = (behavior.attackType + 1) % 3; // Cycle through 3 attack types
+  // Screen shake when damaged
+  if (behavior.screenShake > 0) {
+    behavior.screenShake -= dt * 2;
+    if (bus && typeof bus.emit === 'function') {
+      bus.emit('screen:shake', { intensity: behavior.screenShake * 10 });
+    }
+  }
+  
+  // Phase-specific behavior
+  switch (behavior.phase) {
+    case 1:
+      updateBioOvermindPhase1(enemy, player, dt, world, bus);
+      break;
+    case 2:
+      updateBioOvermindPhase2(enemy, player, dt, world, bus);
+      break;
+    case 3:
+      updateBioOvermindPhase3(enemy, player, dt, world, bus);
+      break;
   }
 }
 
@@ -392,6 +424,12 @@ function fireAdvancedBossProjectile(enemy, player, world, bus, attackType) {
 function updateBioOvermindPhase1(enemy, player, dt, world, bus) {
   const behavior = enemy.behavior;
   
+  // Clean up dead tendrils from tracking array
+  behavior.tendrils = behavior.tendrils.filter(tendrilId => {
+    const tendril = world.entities.get(tendrilId);
+    return tendril && tendril.health > 0;
+  });
+  
   // Spawn/regenerate tendrils
   behavior.tendrilRegenTimer += dt;
   if (behavior.tendrilRegenTimer >= behavior.tendrilRegenRate && behavior.tendrils.length < 4) {
@@ -466,10 +504,11 @@ function updateBioOvermindPhase3(enemy, player, dt, world, bus) {
   }
 }
 
-// Sentinel Prime Final Boss AI (Level 10) - Simplified hovering behavior
+// Sentinel Prime Final Boss AI (Level 10) - Complex 3-phase behavior with hovering
 function updateSentinelPrimeBehavior(enemy, player, dt, world, bus) {
   const behavior = enemy.behavior;
   const canvas = world.canvas;
+  const healthPercent = enemy.health / enemy.maxHealth;
   
   // Initialize center position if not set
   if (behavior.hoverCenterX === 0) {
@@ -477,18 +516,34 @@ function updateSentinelPrimeBehavior(enemy, player, dt, world, bus) {
     behavior.hoverCenterY = canvas.height / 2;
   }
   
-  // Move to center position initially
+  // Phase transitions based on weapon destruction and health
+  const destroyedWeapons = behavior.weaponEmplacements.filter(w => w.destroyed).length;
+  
+  if (behavior.phase === 1 && destroyedWeapons >= 4) {
+    behavior.phase = 2;
+    behavior.phaseTimer = 0;
+    behavior.coreExposed = true;
+    console.log('[BOSS] Sentinel Prime entering Phase 2: Core Exposure');
+  } else if (behavior.phase === 2 && healthPercent <= 0.3) {
+    behavior.phase = 3;
+    behavior.phaseTimer = 0;
+    behavior.overloadActive = true;
+    behavior.desperationLevel = Math.floor((1 - healthPercent) * 4);
+    console.log('[BOSS] Sentinel Prime entering Phase 3: Overload Protocol');
+  }
+  
+  behavior.phaseTimer += dt;
+  
+  // Hovering movement (maintained from simplified version)
   if (behavior.moveToCenter) {
     const dx = behavior.hoverCenterX - enemy.pos.x;
     const dy = behavior.hoverCenterY - enemy.pos.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
     
     if (distance > 60) {
-      // Move towards center
       enemy.vel.x = (dx / distance) * behavior.moveSpeed;
       enemy.vel.y = (dy / distance) * behavior.moveSpeed;
     } else {
-      // Reached center, start hovering
       behavior.moveToCenter = false;
       enemy.vel.x = 0;
       enemy.vel.y = 0;
@@ -498,23 +553,30 @@ function updateSentinelPrimeBehavior(enemy, player, dt, world, bus) {
     behavior.hoverAngle += behavior.hoverSpeed * dt;
     
     const targetX = behavior.hoverCenterX + Math.cos(behavior.hoverAngle) * behavior.hoverRadius;
-    const targetY = behavior.hoverCenterY + Math.sin(behavior.hoverAngle) * behavior.hoverRadius * 0.3; // More horizontal ellipse
+    const targetY = behavior.hoverCenterY + Math.sin(behavior.hoverAngle) * behavior.hoverRadius * 0.3;
     
-    // Smooth movement towards hover position
     const dx = targetX - enemy.pos.x;
     const dy = targetY - enemy.pos.y;
     
-    enemy.vel.x = dx * 1.5; // Slightly slower movement than level 5 boss
+    enemy.vel.x = dx * 1.5;
     enemy.vel.y = dy * 1.5;
   }
   
-  // Attack pattern (slightly faster than level 5)
-  behavior.attackTimer += dt;
-  if (behavior.attackTimer >= behavior.attackRate) {
-    // Fire more intense projectiles at player
-    fireAdvancedBossProjectile(enemy, player, world, bus, behavior.attackType);
-    behavior.attackTimer = 0;
-    behavior.attackType = (behavior.attackType + 1) % 4; // Cycle through 4 attack types
+  // Visual effects
+  behavior.energyPulse = Math.sin(behavior.phaseTimer * 2) * 0.5 + 0.5;
+  behavior.coreGlow = behavior.coreExposed ? Math.sin(behavior.phaseTimer * 4) * 0.3 + 0.7 : 0;
+  
+  // Phase-specific behavior
+  switch (behavior.phase) {
+    case 1:
+      updateSentinelPhase1(enemy, player, dt, world, bus);
+      break;
+    case 2:
+      updateSentinelPhase2(enemy, player, dt, world, bus);
+      break;
+    case 3:
+      updateSentinelPhase3(enemy, player, dt, world, bus);
+      break;
   }
 }
 
@@ -1025,6 +1087,13 @@ function fireOverloadPattern(boss, world, bus) {
 function updateBioTendrilBehavior(enemy, player, dt, world, bus) {
   const behavior = enemy.behavior;
   
+  // Initialize vertical movement if not set
+  if (behavior.verticalDirection === undefined) {
+    behavior.verticalDirection = Math.random() > 0.5 ? 1 : -1; // Random initial direction
+    behavior.verticalSpeed = 80 + Math.random() * 40; // Speed between 80-120
+    behavior.screenBounds = { top: 50, bottom: window.innerHeight - 50 };
+  }
+  
   // Regeneration check
   if (behavior.regenerating) {
     enemy.health = Math.min(enemy.maxHealth, enemy.health + dt * 10);
@@ -1034,9 +1103,21 @@ function updateBioTendrilBehavior(enemy, player, dt, world, bus) {
     }
   }
   
-  // Wave motion
-  const waveMotion = Math.sin(Date.now() * 0.003 + behavior.waveOffset) * 20;
-  enemy.pos.y += waveMotion * dt;
+  // Vertical movement - move up and down across the screen
+  enemy.pos.y += behavior.verticalDirection * behavior.verticalSpeed * dt;
+  
+  // Bounce off screen edges
+  if (enemy.pos.y <= behavior.screenBounds.top) {
+    enemy.pos.y = behavior.screenBounds.top;
+    behavior.verticalDirection = 1; // Move down
+  } else if (enemy.pos.y >= behavior.screenBounds.bottom) {
+    enemy.pos.y = behavior.screenBounds.bottom;
+    behavior.verticalDirection = -1; // Move up
+  }
+  
+  // Add slight horizontal wobble for more organic movement
+  const wobble = Math.sin(Date.now() * 0.005 + behavior.waveOffset) * 15;
+  enemy.pos.x += wobble * dt * 0.5;
   
   // Fire corrosive projectiles
   behavior.fireTimer += dt;
