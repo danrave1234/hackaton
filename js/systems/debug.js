@@ -12,6 +12,10 @@ export class DebugSystem {
     this.visualIndicator = null;
     this.skipToEndRequested = false;
     
+    // Level progression tracking
+    this.enemiesKilled = 0;
+    this.enemiesNeededForNextLevel = 10; // Enemies to kill before level completes
+    
     this.init();
   }
 
@@ -56,10 +60,10 @@ export class DebugSystem {
   updateVisualIndicator() {
     if (!this.visualIndicator || !this.enabled) return;
     
-    const progress = Math.min(100, (this.currentPart / (this.levelParts.length - 1)) * 100);
+    const progress = Math.min(100, (this.enemiesKilled / this.enemiesNeededForNextLevel) * 100);
     this.visualIndicator.innerHTML = `
       [DEBUG] Level ${this.currentLevel} - ${this.levelParts[this.currentPart]} (${progress.toFixed(0)}%)
-      <br><small>F9: Skip to End | F10: Next Part</small>
+      <br><small>Enemies: ${this.enemiesKilled}/${this.enemiesNeededForNextLevel} | F9: Skip to End | F10: Next Part</small>
     `;
   }
 
@@ -155,6 +159,21 @@ export class DebugSystem {
     }, 3000);
   }
 
+  // Called when an enemy is killed
+  onEnemyKilled() {
+    if (!this.enabled) return;
+    
+    this.enemiesKilled++;
+    console.log(`[DEBUG] Enemy killed! Progress: ${this.enemiesKilled}/${this.enemiesNeededForNextLevel}`);
+    this.updateVisualIndicator();
+    
+    // Check if level should be completed
+    if (this.enemiesKilled >= this.enemiesNeededForNextLevel) {
+      console.log(`[DEBUG] Level ${this.currentLevel} target reached! Completing level...`);
+      this.completeLevel();
+    }
+  }
+
   // System update function called by game loop
   update(dt, world, bus) {
     if (!this.enabled) return;
@@ -166,7 +185,16 @@ export class DebugSystem {
       // Get current level from URL
       const params = new URLSearchParams(window.location.search);
       this.currentLevel = Math.max(1, parseInt(params.get('round') || '1', 10) || 1);
+      
+      // Scale difficulty based on level
+      this.enemiesNeededForNextLevel = 10 + (this.currentLevel - 1) * 5;
+      
       this.updateVisualIndicator();
+      
+      // Subscribe to enemy kill events
+      if (bus && typeof bus.on === 'function') {
+        bus.on('enemy:killed', () => this.onEnemyKilled());
+      }
     }
     
     // Auto-advance through level parts based on time (if not manually controlled)
