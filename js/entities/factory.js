@@ -21,13 +21,12 @@ export function createEnemy(x, y, r = 16, type = 'basic') {
     radius: r,
     color: '#fca5a5',
     type: type,
-    // Use spritesheet for BASIC enemy (@Basic enemy.png)
-    sprite: type === 'basic' ? '@basic_enemy.png' : undefined,
-    // 4x4 grid: first row is flying animation
+    // Use spritesheet for BASIC enemy (exact path as requested)
+    sprite: type === 'basic' ? '@asset/spritesheet/basic_enemy.png' : undefined,
+    // Render as a single fixed frame (first cell of a 4x4 grid)
     spriteGrid: type === 'basic' ? '4x4' : undefined,
-    spriteAnim: type === 'basic' ? '0,1,2,3' : undefined,
-    spriteFps: type === 'basic' ? 10 : undefined,
-    spriteIndex: 0,
+    // No animation: lock to a single frame
+    spriteIndex: type === 'basic' ? 0 : 0,
     health: 2
   };
 }
@@ -50,11 +49,10 @@ export function createHunterSeeker(x, y) {
     radius: 18,
     color: '#ff4444',
     type: ENEMY_TYPES.HUNTER_SEEKER,
-    // Sprite available in assets (4x4 sheet)
-    sprite: '@basic_enemy.png',
-    spriteGrid: '4x4',
-    spriteAnim: '0,1,2,3',
-    spriteFps: 10,
+    // Sprite available in assets; grid matches 2 columns x 3 rows
+    sprite: '@Basic enemy.png',
+    spriteGrid: '2x3',
+    // Use a single stable frame to avoid flicker
     spriteIndex: 0,
     behavior: {
       phase: 'lock-on', // 'lock-on', 'pursuit', 'correction'
@@ -159,7 +157,7 @@ export function createMinion(x, y) {
     tags: ['enemy', 'minion'],
     pos: { x, y },
     vel: { x: -200 + Math.random() * 100, y: (Math.random() - 0.5) * 80 },
-    radius: 12,
+    radius: 18,
     color: '#ff8888',
     type: 'minion',
     // Sprite available in assets

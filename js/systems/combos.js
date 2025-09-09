@@ -34,10 +34,15 @@ export function ComboSystem(dt, world, bus) {
     
     // 1. RAMMING PROTOCOL (Offensive + Defensive)
     if (activeCombo === 'offensiveDefensive' && effects.rammingMode) {
-      // Activate with R key
-      if ((keys.has('r') || keys.has('R')) && !player.combo.rammingActive && player.shield && player.shield.hits > 0) {
+      // Init ramming cooldown state
+      if (player.combo.rammingCooldown === undefined) player.combo.rammingCooldown = 0;
+      player.combo.rammingCooldown = Math.max(0, player.combo.rammingCooldown - dt);
+
+      // Activate with R key if off cooldown
+      if ((keys.has('r') || keys.has('R')) && !player.combo.rammingActive && player.combo.rammingCooldown <= 0 && player.shield && player.shield.hits > 0) {
         player.combo.rammingActive = true;
         player.combo.rammingTimer = effects.rammingDuration || 3;
+        player.combo.rammingCooldown = (effects.rammingCooldown || 10);
         
         // Consume all shield hits
         player.shield.hits = 0;

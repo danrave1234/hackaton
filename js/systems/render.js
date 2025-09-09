@@ -148,6 +148,26 @@ function renderEnemy(ctx, enemy, time) {
   // Render common enemy effects (EMP, control, etc.)
   renderEnemyEffects(ctx, enemy, time);
   
+  // Player-specific HUD overlays (cooldowns)
+  if ((enemy.tags||[]).includes('player')) {
+    // Debris heal cooldown indicator above player
+    const cd = enemy.debrisHealCooldown || 0;
+    const cdMax = enemy._debrisHealCooldownMax || 0;
+    if (cdMax > 0) {
+      const ratio = Math.max(0, Math.min(1, cd / cdMax));
+      ctx.save();
+      ctx.translate(0, -enemy.radius - 20);
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(-20, -6, 40, 8);
+      ctx.fillStyle = '#4CAF50';
+      ctx.fillRect(-20, -6, 40 * (1 - ratio), 8);
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(-20, -6, 40, 8);
+      ctx.restore();
+    }
+  }
+
   ctx.restore();
 }
 
@@ -167,10 +187,34 @@ function renderHunterSeeker(ctx, enemy, time) {
   ctx.rotate(angle);
 
   if (hasImg) {
+    // Slice frame from spritesheet using grid + optional animation
+    const gridStr = enemy.spriteGrid || '1x1';
+    const m = /^([0-9]+)x([0-9]+)$/i.exec(gridStr.trim());
+    const cols = m ? parseInt(m[1], 10) : 1;
+    const rows = m ? parseInt(m[2], 10) : 1;
+
+    if (enemy.spriteAnim) {
+      enemy._animT = (enemy._animT || 0) + (1/60);
+      const fps = Math.max(1, parseInt(enemy.spriteFps || 8, 10));
+      const seq = String(enemy.spriteAnim).split(',').map(s => parseInt(s.trim(), 10)).filter(Number.isFinite);
+      if (seq.length > 0) {
+        const frame = Math.floor(enemy._animT * fps) % seq.length;
+        enemy.spriteIndex = seq[frame];
+      }
+    }
+
+    const idx = Math.max(0, enemy.spriteIndex || 0);
+    const colW = Math.floor(sheet.img.naturalWidth / Math.max(1, cols));
+    const rowH = Math.floor(sheet.img.naturalHeight / Math.max(1, rows));
+    const cx = cols > 0 ? (idx % cols) : 0;
+    const cy = rows > 0 ? Math.floor(idx / cols) % rows : 0;
+    const sx = cx * colW;
+    const sy = cy * rowH;
+
     const size = enemy.radius * 2.0;
-    ctx.drawImage(sheet.img, -size/2, -size/2, size, size);
+    ctx.drawImage(sheet.img, sx, sy, colW, rowH, -size/2, -size/2, size, size);
   } else {
-    // Arrow-head shaped drone
+    // Arrow-head shaped drone (vector fallback)
     ctx.fillStyle = enemy.color;
     ctx.beginPath();
     ctx.moveTo(enemy.radius, 0); // Point
@@ -179,23 +223,23 @@ function renderHunterSeeker(ctx, enemy, time) {
     ctx.lineTo(-enemy.radius * 0.6, enemy.radius * 0.4);
     ctx.closePath();
     ctx.fill();
-  }
-  
-  // Red optical sensor
-  ctx.fillStyle = behavior.phase === 'lock-on' ? '#ff0000' : '#ffaa00';
-  ctx.beginPath();
-  ctx.arc(enemy.radius * 0.7, 0, 3, 0, Math.PI * 2);
-  ctx.fill();
-  
-  // Thruster effect when pursuing
-  if (behavior.phase === 'pursuit') {
-    ctx.fillStyle = '#00aaff';
-    for (let i = 0; i < 3; i++) {
-      const flameX = -enemy.radius - (i * 4);
-      const flameY = (Math.random() - 0.5) * 6;
-      ctx.beginPath();
-      ctx.arc(flameX, flameY, 2, 0, Math.PI * 2);
-      ctx.fill();
+
+    // Red optical sensor
+    ctx.fillStyle = behavior.phase === 'lock-on' ? '#ff0000' : '#ffaa00';
+    ctx.beginPath();
+    ctx.arc(enemy.radius * 0.7, 0, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Thruster effect when pursuing
+    if (behavior.phase === 'pursuit') {
+      ctx.fillStyle = '#00aaff';
+      for (let i = 0; i < 3; i++) {
+        const flameX = -enemy.radius - (i * 4);
+        const flameY = (Math.random() - 0.5) * 6;
+        ctx.beginPath();
+        ctx.arc(flameX, flameY, 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
   }
 }
