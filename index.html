@@ -4,11 +4,16 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Simple Blank Project</title>
+  <!-- Tailwind CSS via CDN with a prefix to avoid class name conflicts -->
+  <script>
+    tailwind.config = { prefix: 'tw-' };
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="style/styles.css" />
 </head>
 <body>
   <main class="container">
-    <h1>It works!</h1>
+    <h1 class="tw-text-cyan-400 tw-font-semibold">It works!</h1>
     <p>This is a minimal HTML + CSS + JavaScript starter.</p>
     <button id="helloBtn">Click me</button>
   </main>
