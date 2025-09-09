@@ -1,5 +1,6 @@
 import { markForRemoval } from '../world/world.js';
 import { spawnExplosion } from './explosion.js';
+import { upgradeManager } from './upgrades.js';
 
 export function CollisionSystem(dt, world, bus) {
   const bullets = [];
@@ -10,6 +11,16 @@ export function CollisionSystem(dt, world, bus) {
     if ((e.tags||[]).includes('bullet')) bullets.push(e);
     if ((e.tags||[]).includes('enemy')) enemies.push(e);
     if ((e.tags||[]).includes('player')) players.push(e);
+  }
+
+  // Update player shield timers first
+  for (const p of players) {
+    if (p.shield && p.shield.invulnerable) {
+      p.shield.invulnerableTimer -= dt;
+      if (p.shield.invulnerableTimer <= 0) {
+        p.shield.invulnerable = false;
+      }
+    }
   }
 
   // Bullet-Enemy collisions
@@ -23,12 +34,26 @@ export function CollisionSystem(dt, world, bus) {
       const dy = Math.max(e.pos.y - e.radius, Math.min(by2, e.pos.y + e.radius));
       const inside = dx >= bx1 && dx <= bx2 && dy >= by1 && dy <= by2;
       if (inside) {
-        markForRemoval(world, b.id);
+        // Check if it's a giant laser or mega beam (doesn't get destroyed)
+        const isGiantLaser = (b.tags||[]).includes('giant-laser');
+        const isMegaBeam = (b.tags||[]).includes('mega-beam');
+        const isPiercing = isGiantLaser || isMegaBeam;
+
+        if (!isPiercing) {
+          markForRemoval(world, b.id);
+        }
+
         markForRemoval(world, e.id);
-        bus.emit('score:add', 100);
-        bus.emit('enemy:killed'); // Emit event for level progression
-        spawnExplosion(world, e.pos.x, e.pos.y, Math.max(40, e.radius * 2.5), bus);
-        break;
+
+        // Special bullets give more score
+        let scoreValue = 100;
+        if (isGiantLaser) scoreValue = 300;
+        if (isMegaBeam) scoreValue = 500;
+        bus.emit('score:add', scoreValue);
+        bus.emit('enemy:died'); // Emit event for level progression
+        if (bus && typeof bus.emit === 'function') bus.emit('sfx:explosion', { x: e.pos.x, y: e.pos.y });
+
+        if (!isPiercing) break; // Piercing weapons continue through enemies
       }
     }
   }
@@ -47,30 +72,91 @@ export function CollisionSystem(dt, world, bus) {
       const distanceSquared = (dx - px - pw/2) * (dx - px - pw/2) + (dy - py - ph/2) * (dy - py - ph/2);
       
       if (distanceSquared < e.radius * e.radius) {
+        // Get upgrade effects
+        const effects = upgradeManager.getAllEffects();
+
+        // Initialize shield system if not present
+        if (p.shield === undefined) {
+          p.shield = {
+            hits: effects.shieldHits || 0,
+            maxHits: effects.shieldHits || 0,
+            invulnerable: false,
+            invulnerableTimer: 0
+          };
+        }
+
+        // Update shield with current upgrade level
+        const newMaxHits = effects.shieldHits || 0;
+        if (p.shield.maxHits < newMaxHits) {
+          // Player upgraded shield - restore to full
+          p.shield.hits = newMaxHits;
+          p.shield.maxHits = newMaxHits;
+        } else {
+          p.shield.maxHits = newMaxHits;
+          if (p.shield.hits > p.shield.maxHits) {
+            p.shield.hits = p.shield.maxHits;
+          }
+        }
+
+
+        // Skip damage if invulnerable
+        if (p.shield.invulnerable) {
+          markForRemoval(world, e.id); // Enemy still gets destroyed
+          if (bus && typeof bus.emit === 'function') bus.emit('sfx:explosion', { x: e.pos.x, y: e.pos.y });
+          continue;
+        }
+
+        // Handle shield absorption
+        if (p.shield.hits > 0) {
+          p.shield.hits--;
+          markForRemoval(world, e.id);
+
+          // Visual/audio feedback for shield hit
+          if (bus && typeof bus.emit === 'function') {
+            bus.emit('sfx:explosion', { x: e.pos.x, y: e.pos.y });
+            // Could add shield hit sound here
+          }
+
+          console.log(`[COLLISION] Shield absorbed hit! Remaining: ${p.shield.hits}/${p.shield.maxHits}`);
+
+          // Check if shield broken and has invulnerability effect
+          if (p.shield.hits === 0 && effects.invulnerableOnBreak) {
+            p.shield.invulnerable = true;
+            p.shield.invulnerableTimer = effects.invulnerableDuration || 1;
+            console.log('[COLLISION] Shield broken! Invulnerability activated!');
+          }
+
+          break;
+        } else {
+          // No shield - player dies
+          bus.emit('player:died', { x: p.pos.x, y: p.pos.y });
+          console.log('[COLLISION] Player hit enemy! Game Over!');
+          break;
+        }
         // Player hit by enemy - deal damage based on enemy size
         const damage = Math.floor(e.radius * 2); // Larger enemies deal more damage
         const playerDied = window.healthSystem?.damagePlayer?.(p, damage) || false;
-        
+
         markForRemoval(world, e.id); // Remove the enemy that hit the player
         spawnExplosion(world, e.pos.x, e.pos.y, Math.max(40, e.radius * 2.5), bus);
-        
+
         if (playerDied) {
           // Stop all player inputs immediately
           if (window.PlayerKeys) {
             window.PlayerKeys.clear();
           }
-          
+
           // Calculate player visual center for explosion positioning
           const playerW = p.size?.w || 120;
           const playerH = p.size?.h || 60;
           // Default anchor is 0.35, 0.5 (from HTML config)
           const centerX = p.pos.x + (playerW * 0.15); // Move from 35% anchor to 50% center
           const centerY = p.pos.y; // Y is already centered (50% anchor)
-          
+
           // Replace player with explosion at visual center (proportional to player size)
           spawnExplosion(world, centerX, centerY, Math.max(playerW * 0.8, playerH * 0.8), bus);
           markForRemoval(world, p.id);
-          
+
           bus.emit('player:died', { x: p.pos.x, y: p.pos.y });
           console.log('[COLLISION] Player died! Game Over!');
         } else {
