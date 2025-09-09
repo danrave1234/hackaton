@@ -62,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Score + SFX + Debug systems
   const score = createScoreSystem(hudScore);
   const sfx = createSfxSystem(canvas);
-  
+
   // Initialize debug system (development only)
   window.debugSystem = createDebugSystem();
 
@@ -73,6 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ShootingSystem,
     MovementSystem,
     CollisionSystem,
+    sfx.system,
     CleanupSystem,
     RenderSystem,
     score.system,
@@ -83,6 +84,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 document.addEventListener('DOMContentLoaded', () => {
   const $ = (sel) => document.querySelector(sel);
+  // Allow disabling this simple demo renderer when ECS is active
+  const canvasEl = /** @type {HTMLCanvasElement} */ (document.getElementById('gameCanvas'));
+  if (canvasEl && String(canvasEl.dataset?.disableSimple).toLowerCase() === 'true') {
+    return;
+  }
 
   // Read round from query param, default 1
   const params = new URLSearchParams(window.location.search);
@@ -98,10 +104,22 @@ document.addEventListener('DOMContentLoaded', () => {
   // Optional sprite assets (read from canvas data-* attributes)
   /** @type {{ player?: HTMLImageElement, enemy?: HTMLImageElement, bullet?: HTMLImageElement }} */
   const spriteImages = {};
+  /** @type {{ player?: { cols:number, rows:number, index:number, frame?: {x:number,y:number,w:number,h:number}, anim?: { indices:number[], fps:number }, _t?: number }, bullet?: { cols:number, rows:number, index:number, frame?: {x:number,y:number,w:number,h:number} } }} */
+  const spriteMeta = {};
 
   function loadSpriteFromDataset(key, datasetKey) {
-    const src = canvas?.dataset?.[datasetKey];
+    let src = canvas?.dataset?.[datasetKey];
     if (!src) return undefined;
+    // Support aliases:
+    // - @asset/... -> asset/...
+    // - @filename -> asset/spritesheet/filename
+    if (src.startsWith('@asset/')) src = src.replace(/^@asset\//, 'asset/');
+    else if (src.startsWith('@')) src = 'asset/spritesheet/' + src.slice(1);
+    // Resolve relative to page folder if needed
+    if (src.startsWith('asset/')) {
+      const inPages = /\/pages\//.test(location.pathname);
+      if (inPages) src = '../' + src;
+    }
     const img = new Image();
     img.src = src;
     return img;
@@ -110,6 +128,65 @@ document.addEventListener('DOMContentLoaded', () => {
   spriteImages.player = loadSpriteFromDataset('player', 'playerSprite');
   spriteImages.enemy = loadSpriteFromDataset('enemy', 'enemySprite');
   spriteImages.bullet = loadSpriteFromDataset('bullet', 'bulletSprite');
+
+  // Optional spritesheet metadata via dataset
+  // data-player-sprite-grid="CxR" (e.g., 3x3), data-player-sprite-index="i" (0-based)
+  // or data-player-sprite-frame="x,y,w,h" to specify a manual source rect
+  (function parsePlayerSheetMeta() {
+    const grid = canvas?.dataset?.playerSpriteGrid || '';
+    const indexStr = canvas?.dataset?.playerSpriteIndex || '';
+    const frameStr = canvas?.dataset?.playerSpriteFrame || '';
+    if (frameStr) {
+      const parts = frameStr.split(',').map((n) => parseInt(n.trim(), 10));
+      if (parts.length === 4 && parts.every((n) => Number.isFinite(n))) {
+        spriteMeta.player = { cols: 1, rows: 1, index: 0, frame: { x: parts[0], y: parts[1], w: parts[2], h: parts[3] } };
+        return;
+      }
+    }
+    const m = /^\s*(\d+)x(\d+)\s*$/i.exec(grid || '');
+    if (m) {
+      const cols = parseInt(m[1], 10) || 1;
+      const rows = parseInt(m[2], 10) || 1;
+      const index = Math.max(0, parseInt(indexStr || '0', 10) || 0);
+      const animStr = canvas?.dataset?.playerSpriteAnim || '';
+      const fpsStr = canvas?.dataset?.playerAnimFps || '';
+      const anim = animStr
+        ? { indices: animStr.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => Number.isFinite(n)), fps: Math.max(1, parseInt(fpsStr || '8', 10) || 8) }
+        : undefined;
+      spriteMeta.player = { cols, rows, index, anim, _t: 0 };
+    }
+  })();
+
+  // Bullet spritesheet/frame support
+  (function parseBulletSheetMeta() {
+    const frameStr = canvas?.dataset?.bulletSpriteFrame || '';
+    const percentStr = canvas?.dataset?.bulletSpritePercent || '';
+    if (frameStr) {
+      const parts = frameStr.split(',').map((n) => parseInt(n.trim(), 10));
+      if (parts.length === 4 && parts.every((n) => Number.isFinite(n))) {
+        spriteMeta.bullet = { cols: 1, rows: 1, index: 0, frame: { x: parts[0], y: parts[1], w: parts[2], h: parts[3] } };
+        return;
+      }
+    }
+    if (percentStr) {
+      const p = percentStr.split(',').map((v) => parseFloat(v.trim()));
+      if (p.length === 4 && p.every((n) => Number.isFinite(n))) {
+        // store normalized; will convert at draw time using image natural size
+        spriteMeta.bullet = { cols: 0, rows: 0, index: 0, frame: { x: p[0], y: p[1], w: p[2], h: p[3] } };
+        (spriteMeta.bullet).percent = true;
+        return;
+      }
+    }
+    const grid = canvas?.dataset?.bulletSpriteGrid || '';
+    const indexStr = canvas?.dataset?.bulletSpriteIndex || '';
+    const m = /^\s*(\d+)x(\d+)\s*$/i.exec(grid || '');
+    if (m) {
+      const cols = parseInt(m[1], 10) || 1;
+      const rows = parseInt(m[2], 10) || 1;
+      const index = Math.max(0, parseInt(indexStr || '0', 10) || 0);
+      spriteMeta.bullet = { cols, rows, index };
+    }
+  })();
 
   // Sound effects
   const laserSfxSrcRaw = canvas?.dataset?.laserSfx || '@asset/sfx/laser_shoot.mp3';
@@ -197,8 +274,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const player = {
     x: 120,
     y: canvas.height / 2,
-    width: 36,
-    height: 18,
+    width: 96,
+    height: 48,
     speed: 260,
     color: '#a7f3d0',
   };
@@ -335,7 +412,35 @@ document.addEventListener('DOMContentLoaded', () => {
       // Draw centered, scaled to logical size
       const drawW = player.width;
       const drawH = player.height;
-      ctx.drawImage(playerImg, -drawW / 2, -drawH / 2, drawW, drawH);
+      const meta = spriteMeta.player;
+      if (meta) {
+        let sx = 0, sy = 0, sw = 0, sh = 0;
+        // Advance animation
+        if (meta.anim && meta.anim.indices && meta.anim.indices.length > 0) {
+          meta._t = (meta._t || 0) + (1 / 60);
+          const fps = meta.anim.fps || 8;
+          const frameIdx = Math.floor(meta._t * fps) % meta.anim.indices.length;
+          meta.index = meta.anim.indices[frameIdx];
+        }
+        if (meta.frame) {
+          ({ x: sx, y: sy, w: sw, h: sh } = meta.frame);
+        } else {
+          const cols = meta.cols || 1;
+          const rows = meta.rows || 1;
+          const colW = Math.floor(playerImg.naturalWidth / cols);
+          const rowH = Math.floor(playerImg.naturalHeight / rows);
+          const idx = meta.index || 0;
+          const cx = idx % cols;
+          const cy = Math.floor(idx / cols) % rows;
+          sx = cx * colW;
+          sy = cy * rowH;
+          sw = colW;
+          sh = rowH;
+        }
+        ctx.drawImage(playerImg, sx, sy, sw, sh, -drawW / 2, -drawH / 2, drawW, drawH);
+      } else {
+        ctx.drawImage(playerImg, -drawW / 2, -drawH / 2, drawW, drawH);
+      }
       ctx.restore();
     } else {
       // Fallback (triangle-like ship)
@@ -353,10 +458,41 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Bullets
     const bulletImg = spriteImages.bullet;
+    const bulletMeta = spriteMeta.bullet;
     if (bulletImg && bulletImg.complete && bulletImg.naturalWidth > 0) {
-      bullets.forEach((b) => {
-        ctx.drawImage(bulletImg, b.x, b.y - b.h / 2, b.w, b.h);
-      });
+      if (bulletMeta && (bulletMeta.frame || bulletMeta.cols)) {
+        bullets.forEach((b) => {
+          let sx = 0, sy = 0, sw = bulletImg.naturalWidth, sh = bulletImg.naturalHeight;
+          if (bulletMeta.frame) {
+            if (bulletMeta.percent) {
+              const fx = bulletMeta.frame.x, fy = bulletMeta.frame.y, fw = bulletMeta.frame.w, fh = bulletMeta.frame.h;
+              sx = Math.floor(fx * bulletImg.naturalWidth);
+              sy = Math.floor(fy * bulletImg.naturalHeight);
+              sw = Math.floor(fw * bulletImg.naturalWidth);
+              sh = Math.floor(fh * bulletImg.naturalHeight);
+            } else {
+              ({ x: sx, y: sy, w: sw, h: sh } = bulletMeta.frame);
+            }
+          } else if (bulletMeta.cols) {
+            const cols = bulletMeta.cols || 1;
+            const rows = bulletMeta.rows || 1;
+            const colW = Math.floor(bulletImg.naturalWidth / cols);
+            const rowH = Math.floor(bulletImg.naturalHeight / rows);
+            const idx = bulletMeta.index || 0;
+            const cx = idx % cols;
+            const cy = Math.floor(idx / cols) % rows;
+            sx = cx * colW;
+            sy = cy * rowH;
+            sw = colW;
+            sh = rowH;
+          }
+          ctx.drawImage(bulletImg, sx, sy, sw, sh, b.x, b.y - b.h / 2, b.w, b.h);
+        });
+      } else {
+        bullets.forEach((b) => {
+          ctx.drawImage(bulletImg, b.x, b.y - b.h / 2, b.w, b.h);
+        });
+      }
     } else {
       ctx.fillStyle = '#93c5fd';
       bullets.forEach((b) => {
