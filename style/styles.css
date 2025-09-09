@@ -1,48 +1,186 @@
-/* Minimal styles for the blank project */
-:root {
-  --bg: #0f172a;        /* slate-900 */
-  --panel: #111827;     /* gray-900 */
-  --text: #e5e7eb;      /* gray-200 */
-  --accent: #22d3ee;    /* cyan-400 */
+/* Project Chimera - Game Menu Styles */
+
+/* Prevent horizontal scroll on all pages */
+html, body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
-* { box-sizing: border-box; }
-html, body { height: 100%; }
-body {
-  margin: 0;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-  background: radial-gradient(1200px 800px at 10% 10%, #1f2937, var(--bg));
-  color: var(--text);
-  display: grid;
-  place-items: center;
+/* FNAF-Style Menu Items */
+.chimera-menu {
+  position: relative;
 }
 
-.container {
-  width: min(92vw, 640px);
-  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 16px;
-  padding: 24px 28px;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.04);
-}
-
-h1 {
-  margin: 0 0 8px;
-  font-size: 28px;
-}
-
-p { margin: 0 0 16px; color: #cbd5e1; }
-
-button {
-  appearance: none;
-  border: none;
-  background: var(--accent);
-  color: #0b1020;
-  padding: 10px 16px;
-  border-radius: 10px;
-  font-weight: 700;
+.chimera-menu .item {
+  position: relative;
+  display: block;
+  padding: 12px 24px 12px 40px;
+  margin: 8px 0;
+  color: #e2e8f0;
+  font-size: 1.1rem;
+  font-weight: 300;
+  letter-spacing: 0.025em;
   cursor: pointer;
+  transition: all 0.2s ease;
+  border-left: 3px solid transparent;
 }
 
-button:hover { filter: brightness(1.05); }
-button:active { transform: translateY(1px); }
+.chimera-menu .item:hover,
+.chimera-menu .item.selected {
+  color: #ffffff;
+  background: rgba(6, 182, 212, 0.15);
+  border-left-color: #06b6d4;
+  transform: translateX(8px);
+}
+
+/* Chevron selector for active item */
+.chimera-menu .item.selected::before {
+  content: '▶';
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #06b6d4;
+  font-size: 0.9rem;
+  animation: pulse 2s infinite;
+}
+
+.chimera-menu .item.disabled {
+  color: #64748b;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.chimera-menu .item.disabled:hover {
+  background: transparent;
+  border-left-color: transparent;
+  transform: none;
+}
+
+/* FNAF-style sweep bar animation */
+.fnaf-sweep-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  height: 2px;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    #06b6d4 45%, 
+    #ffffff 50%, 
+    #06b6d4 55%, 
+    transparent 100%);
+  animation: sweep 8s ease-in-out infinite;
+  opacity: 0.6;
+  top: 20%;
+}
+
+@keyframes sweep {
+  0%, 100% { transform: translateX(-100%); }
+  /* Use element-relative translation to avoid causing page overflow */
+  50% { transform: translateX(100%); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* FNAF-style title */
+.fnaf-title {
+  text-shadow: 0 0 10px rgba(6, 182, 212, 0.5);
+  animation: titleGlow 4s ease-in-out infinite alternate;
+}
+
+@keyframes titleGlow {
+  0% { text-shadow: 0 0 10px rgba(6, 182, 212, 0.3); }
+  100% { text-shadow: 0 0 20px rgba(6, 182, 212, 0.7), 0 0 30px rgba(6, 182, 212, 0.3); }
+}
+
+/* Screen overlays for retro feel */
+.fnaf-noise {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.03;
+  background-image: 
+    radial-gradient(circle, transparent 1px, rgba(255,255,255,0.15) 1px);
+  background-size: 4px 4px;
+  animation: noise 0.2s infinite;
+  z-index: 1000;
+}
+
+.fnaf-scanlines {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.1;
+  background: linear-gradient(transparent 50%, rgba(0,255,0,0.03) 50%);
+  background-size: 100% 4px;
+  z-index: 1001;
+}
+
+@keyframes noise {
+  0% { transform: translate(0px, 0px); }
+  10% { transform: translate(-1px, -1px); }
+  20% { transform: translate(1px, -2px); }
+  30% { transform: translate(-1px, 1px); }
+  40% { transform: translate(1px, 2px); }
+  50% { transform: translate(-1px, -1px); }
+  60% { transform: translate(1px, 1px); }
+  70% { transform: translate(-1px, -2px); }
+  80% { transform: translate(-1px, 1px); }
+  90% { transform: translate(1px, -1px); }
+  100% { transform: translate(0px, 0px); }
+}
+
+/* Corner labels */
+.corner {
+  position: fixed;
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 300;
+  z-index: 1002;
+  letter-spacing: 0.05em;
+}
+
+.corner-left {
+  bottom: 20px;
+  left: 20px;
+}
+
+.corner-right {
+  bottom: 20px;
+  right: 20px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .chimera-menu .item {
+    font-size: 1rem;
+    padding: 10px 20px 10px 35px;
+  }
+  
+  .fnaf-title {
+    text-align: center;
+  }
+  
+  .corner {
+    font-size: 0.6rem;
+  }
+  
+  .corner-left {
+    bottom: 10px;
+    left: 10px;
+  }
+  
+  .corner-right {
+    bottom: 10px;
+    right: 10px;
+  }
+}

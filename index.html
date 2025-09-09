@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Simple Blank Project</title>
+  <title>Project Chimera: The Rogue Core</title>
   <!-- Tailwind CSS via CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Configure Tailwind (CDN) with a tw- prefix AFTER the CDN is loaded -->
@@ -12,12 +12,121 @@
   </script>
   <link rel="stylesheet" href="style/styles.css" />
 </head>
-<body>
-  <main class="container">
-    <h1 class="tw-text-cyan-400 tw-font-semibold">It works!</h1>
-    <p>This is a minimal HTML + CSS + JavaScript starter.</p>
-    <button id="helloBtn">Click me</button>
+<body class="tw-min-h-screen tw-bg-gradient-to-b tw-from-slate-900 tw-to-slate-950 tw-text-slate-200 tw-antialiased">
+  <!-- Landing + Main Menu (FNAF-style split) -->
+  <main class="tw-min-h-screen tw-grid md:tw-grid-cols-[25%_75%] tw-gap-0">
+    <!-- Left: Title + Vertical Menu -->
+    <section class="tw-relative tw-flex tw-flex-col tw-justify-center tw-gap-6 tw-p-6 lg:tw-p-8 tw-bg-gradient-to-r tw-from-transparent tw-via-slate-950/30 tw-to-slate-950/90">
+      <!-- Horizontal sweep bar (FNAF-like) -->
+      <div class="fnaf-sweep-bar tw-absolute tw-left-0 tw-right-0"></div>
+
+      <header class="tw-mb-2">
+        <h1 class="fnaf-title tw-text-white tw-font-light tw-leading-tight">
+          <span class="tw-block tw-text-2xl sm:tw-text-3xl md:tw-text-4xl">Project</span>
+          <span class="tw-block tw-text-2xl sm:tw-text-3xl md:tw-text-4xl">Chimera</span>
+          <span class="tw-block tw-text-2xl sm:tw-text-3xl md:tw-text-4xl">The Rogue</span>
+          <span class="tw-block tw-text-2xl sm:tw-text-3xl md:tw-text-4xl">Core</span>
+        </h1>
+      </header>
+
+      <!-- Main Menu (text items with chevron selector) -->
+      <nav id="menu" class="chimera-menu tw-mt-4" aria-label="Main menu">
+        <div role="button" tabindex="0" id="startBtn" class="item selected">New Game</div>
+        <div role="button" tabindex="-1" class="item" id="leaderboardBtn">Leaderboard</div>
+      </nav>
+
+      <footer class="tw-pt-2 tw-text-left tw-text-xs tw-text-slate-400">
+        Prototype UI — Landing page + Main menu
+      </footer>
+    </section>
+
+    <!-- Right: Big animated GIF -->
+    <aside class="tw-relative tw-hidden sm:tw-block">
+      <img
+        src="https://media.giphy.com/media/3oEjHP8ELRNNlnlLGM/giphy.gif"
+        alt="Atmospheric animated scene"
+        class="tw-absolute tw-inset-0 tw-w-full tw-h-full tw-object-cover tw-object-center" />
+      <!-- Dark transition from left edge -->
+      <div class="tw-absolute tw-inset-0 tw-bg-gradient-to-r tw-from-slate-950 tw-via-slate-950/70 tw-to-transparent tw-w-1/4"></div>
+    </aside>
   </main>
+
+  <!-- Screen overlays: film grain + scanlines -->
+  <div class="fnaf-noise tw-pointer-events-none"></div>
+  <div class="fnaf-scanlines tw-pointer-events-none"></div>
+
+  <!-- Corner labels -->
+  <div class="corner corner-left">v 0.1.0</div>
+  <div class="corner corner-right">© 2025 Project Chimera</div>
+
+  <!-- Modals -->
+  <section id="modal-how" class="tw-fixed tw-inset-0 tw-bg-black/70 tw-items-center tw-justify-center tw-z-50 tw-hidden">
+    <div class="tw-w-[min(92vw,800px)] tw-max-h-[85vh] tw-overflow-auto tw-rounded-2xl tw-border tw-border-white/10 tw-bg-slate-900/95 tw-backdrop-blur tw-p-6">
+      <div class="tw-flex tw-items-start tw-justify-between tw-gap-4">
+        <h2 class="tw-text-xl tw-font-bold tw-text-cyan-300">How to Play</h2>
+        <button class="modal-close tw-text-slate-300 tw-rounded-lg tw-px-3 tw-py-1 tw-bg-white/10 hover:tw-bg-white/20">Close</button>
+      </div>
+      <div class="tw-mt-3 tw-space-y-2 tw-text-slate-200">
+        <p>• Survive each Sector by navigating hazards and defeating hostile drones.</p>
+        <p>• After a Sector, choose 1 of 3 Chimera Blueprints to evolve your ship.</p>
+        <p>• Stack upgrades to craft builds, then face the Sector Guardian.</p>
+        <p>• Make it through all Sectors to confront the Singularity.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="modal-blueprints" class="tw-fixed tw-inset-0 tw-bg-black/70 tw-items-center tw-justify-center tw-z-50 tw-hidden">
+    <div class="tw-w-[min(92vw,900px)] tw-max-h-[85vh] tw-overflow-auto tw-rounded-2xl tw-border tw-border-white/10 tw-bg-slate-900/95 tw-backdrop-blur tw-p-6">
+      <div class="tw-flex tw-items-start tw-justify-between tw-gap-4">
+        <h2 class="tw-text-xl tw-font-bold tw-text-cyan-300">Chimera Blueprints</h2>
+        <button class="modal-close tw-text-slate-300 tw-rounded-lg tw-px-3 tw-py-1 tw-bg-white/10 hover:tw-bg-white/20">Close</button>
+      </div>
+      <div class="tw-mt-3 tw-grid tw-grid-cols-1 md:tw-grid-cols-3 tw-gap-4 tw-text-slate-200">
+        <div class="tw-bg-white/5 tw-rounded-xl tw-p-4 tw-border tw-border-white/10">
+          <h3 class="tw-font-semibold tw-text-cyan-200">Offensive Systems</h3>
+          <ul class="tw-mt-2 tw-list-disc tw-ml-5">
+            <li>Twin Lance</li>
+            <li>Particle Annihilator</li>
+            <li>Ripple Cascade</li>
+          </ul>
+        </div>
+        <div class="tw-bg-white/5 tw-rounded-xl tw-p-4 tw-border tw-border-white/10">
+          <h3 class="tw-font-semibold tw-text-cyan-200">Sub-Weapon Systems</h3>
+          <ul class="tw-mt-2 tw-list-disc tw-ml-5">
+            <li>Twin-Salvo Missile</li>
+            <li>Starfall Munitions</li>
+            <li>Hunter-Killer Swarm</li>
+          </ul>
+        </div>
+        <div class="tw-bg-white/5 tw-rounded-xl tw-p-4 tw-border tw-border-white/10">
+          <h3 class="tw-font-semibold tw-text-cyan-200">Core Systems</h3>
+          <ul class="tw-mt-2 tw-list-disc tw-ml-5">
+            <li>Phantom Core</li>
+            <li>Frontal Deflector</li>
+            <li>Kinetic Pulse</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="modal-credits" class="tw-fixed tw-inset-0 tw-bg-black/70 tw-items-center tw-justify-center tw-z-50 tw-hidden">
+    <div class="tw-w-[min(92vw,700px)] tw-max-h-[85vh] tw-overflow-auto tw-rounded-2xl tw-border tw-border-white/10 tw-bg-slate-900/95 tw-backdrop-blur tw-p-6">
+      <div class="tw-flex tw-items-start tw-justify-between tw-gap-4">
+        <h2 class="tw-text-xl tw-font-bold tw-text-cyan-300">Credits</h2>
+        <button class="modal-close tw-text-slate-300 tw-rounded-lg tw-px-3 tw-py-1 tw-bg-white/10 hover:tw-bg-white/20">Close</button>
+      </div>
+      <div class="tw-mt-3 tw-space-y-1 tw-text-slate-200">
+        <p>Concept & Design: Based on the Project Chimera idea document.</p>
+        <p>Prototype UI: Hackathon Starter</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Status Toast -->
+  <div id="toast" class="tw-fixed tw-bottom-4 tw-left-1/2 tw--translate-x-1/2 tw-z-50 tw-hidden">
+    <div class="tw-bg-cyan-400 tw-text-slate-900 tw-font-semibold tw-px-4 tw-py-2 tw-rounded-full tw-shadow-lg">Starting run... (placeholder)</div>
+  </div>
 
   <script src="js/script.js"></script>
 </body>
