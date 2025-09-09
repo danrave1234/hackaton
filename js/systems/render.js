@@ -192,9 +192,23 @@ export function RenderSystem(dt, world) {
 
         ctx.restore();
       } else {
-        // Regular bullet
-        ctx.fillStyle = '#93c5fd';
-        ctx.fillRect(e.pos.x, e.pos.y - e.rect.h / 2, e.rect.w, e.rect.h);
+        // Regular bullet with sprite support
+        const img = bulletSprite?.img;
+        const bw = e.rect?.w || 4;
+        const bh = e.rect?.h || 1;
+        
+        if (img && img.complete && img.naturalWidth > 0) {
+          // Render PNG at a slightly larger fixed size
+          const fixedW = 12;  // Slightly bigger width
+          const fixedH = 4;   // Slightly bigger height
+          ctx.drawImage(img, e.pos.x, e.pos.y - fixedH / 2, fixedW, fixedH);
+          if (window.DEBUG_BULLETS) console.log('Bullet rendered as PNG:', fixedW, 'x', fixedH);
+        } else {
+          // Fallback rectangle
+          ctx.fillStyle = '#93c5fd';
+          ctx.fillRect(e.pos.x, e.pos.y - bh / 2, bw, bh);
+          if (window.DEBUG_BULLETS) console.log('Bullet rendered as rect:', bw, 'x', bh);
+        }
       }
     } else if ((e.tags||[]).includes('enemy')) {
       ctx.fillStyle = e.color || '#fca5a5';
